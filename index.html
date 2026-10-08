@@ -103,6 +103,11 @@ main { flex: 1; padding: 20px 16px 110px; display: flex; flex-direction: column;
   background: var(--mark); box-shadow: 0 2px 0 rgba(0, 0, 0, .18);
 }
 .notice .body { white-space: pre-wrap; overflow-wrap: anywhere; }
+.notice.tap { cursor: pointer; }
+.notice.tap .body { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.notice.tap:hover { box-shadow: 0 0 0 2px var(--line), var(--shadow); }
+.titlelink { border: 0; background: none; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.post-body { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 1.02rem; }
 .meta { color: var(--muted); font-size: .84rem; }
 .chip {
   display: inline-block; font-size: .74rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
@@ -113,6 +118,33 @@ main { flex: 1; padding: 20px 16px 110px; display: flex; flex-direction: column;
 .chip.bad { background: var(--danger-soft); color: var(--danger); }
 .amount { font: 700 2.1rem/1.1 var(--display); font-variant-numeric: tabular-nums; }
 .ref { font: 700 1.45rem/1.2 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .03em; overflow-wrap: anywhere; }
+.when { font-weight: 700; color: var(--accent); }
+a.btn { display: inline-block; text-decoration: none; text-align: center; }
+label.check { flex-direction: row; align-items: center; gap: 10px; font-weight: 500; font-size: .95rem; }
+label.check input { width: 20px; height: 20px; flex: none; margin: 0; accent-color: var(--accent); }
+fieldset.aud { border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin: 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+fieldset.aud legend { font-weight: 700; font-size: .88rem; padding: 0 6px; }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.cal .dow { text-align: center; font-size: .72rem; font-weight: 700; letter-spacing: .06em; color: var(--muted); padding-block: 4px; }
+.cal-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cal-head select { width: auto; flex: 1 1 7rem; padding: 8px 10px; font-weight: 700; }
+.cal .day { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 0 6px; min-height: 50px;
+  border: 0; border-radius: 10px; background: transparent; font: 600 .95rem var(--body); font-variant-numeric: tabular-nums; color: var(--ink); }
+button.day { cursor: pointer; }
+.cal .day .n { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; }
+.cal .day.out { color: var(--muted); opacity: .5; font-weight: 400; }
+.cal .day.today .n { background: var(--accent); color: var(--accent-ink); }
+.cal .day.sel { box-shadow: inset 0 0 0 2px var(--accent); background: var(--soft); }
+.dots { display: flex; gap: 3px; height: 7px; align-items: center; }
+.dots i { width: 7px; height: 7px; border-radius: 50%; display: block; }
+.dots b { font-size: .62rem; line-height: 7px; color: var(--muted); }
+.chip.club { background: color-mix(in srgb, var(--club) 18%, var(--surface)); color: var(--ink); }
+.chip.club::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--club); margin-right: 6px; vertical-align: 1px; }
+.sw-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; vertical-align: 1px; }
+.swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+.sw { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--surface); background: var(--c); box-shadow: 0 0 0 1px var(--line); cursor: pointer; padding: 0; }
+.sw.on { box-shadow: 0 0 0 2px var(--ink); }
+.tabs.many button { font-size: .74rem; padding-inline: 1px; }
 .price { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 img.qr { width: 100%; max-width: 260px; align-self: center; background: #fff; padding: 8px; border-radius: 10px; border: 1px solid var(--line); }
 img.shot { max-width: 100%; max-height: 320px; align-self: center; border-radius: 10px; border: 1px solid var(--line); }
@@ -238,6 +270,13 @@ const CONFIG = {
       minors: []
     }
   },
+  // The calendar lets students move between these years.
+  CALENDAR_FIRST_YEAR: 2025,
+  CALENDAR_LAST_YEAR: 2044,
+  // Club colours. A club without a chosen colour gets one of these automatically.
+  CLUB_COLOURS: [["#E5484D", "Red"], ["#E93D82", "Pink"], ["#F76B15", "Orange"], ["#D6A10C", "Amber"], ["#46A758", "Green"],
+    ["#12A594", "Teal"], ["#0090FF", "Blue"], ["#3E63DD", "Indigo"], ["#8E4EC6", "Purple"], ["#AB4ABA", "Plum"],
+    ["#A07D58", "Brown"], ["#6E7B8B", "Slate"]],
   CATEGORIES: ["Academic", "Career", "Culture", "Sports", "Arts", "Community", "Special interest"]
 };
 
@@ -252,13 +291,14 @@ const day = (iso) => new Date(iso).toLocaleDateString("en-MY", { day: "numeric",
 let sb = null;
 let currentUid;          // undefined until the first session check finishes
 const S = {};
-const emptyManage = (clubId = null) => ({ clubId, members: null, posts: null, error: "", qrFile: null, qrPreview: "", qrUrl: "", feeError: "" });
+const emptyManage = (clubId = null) => ({ clubId, members: null, posts: null, error: "", qrFile: null, qrPreview: "", qrUrl: "", feeError: "", counts: {}, signupLists: {} });
 function reset() {
   Object.assign(S, {
     phase: "loading", fatal: "",
     authView: "login", draft: {}, authError: "", pendingEmail: "",
     user: null, profile: null, isAdmin: false,
     clubs: [], mine: new Map(), committee: [], feed: [], toCheck: {}, pay: null,
+    v3: false, signups: new Set(), myEvents: [], calMonth: null, calDay: null, post: null, allPosts: false,
     tab: "home", clubFilter: "all", clubSearch: "",
     sheet: null, editing: false, formError: "",
     manage: emptyManage(),
@@ -350,20 +390,30 @@ function profileRow(src) {
   return {
     first_name: t(src.first_name), last_name: t(src.last_name), student_id: t(src.student_id),
     phone: t(src.phone), year: Number(src.year) || null, school: t(src.school),
-    major: pick(src.major, src.major_other), minor: pick(src.minor, src.minor_other)
+    major: pick(src.major, src.major_other), minor: pick(src.minor, src.minor_other),
+    major2: pick(src.major2, src.major2_other), minor2: pick(src.minor2, src.minor2_other)
   };
 }
+// Only send the second major and minor once the database has room for them.
+function dbRow(row) { const r = { ...row }; if (!S.v3) { delete r.major2; delete r.minor2; } return r; }
 function checkProfile(p) {
   if (!p.first_name || !p.last_name) return "Enter your first and last name.";
   if (!p.student_id) return "Enter your Monash student ID.";
   if (!p.year) return "Choose your year.";
   if (!p.school) return "Choose your school.";
   if (p.year > 1 && !p.major && !p.minor) return "From Year 2 onwards, choose your major or a minor.";
+  if (p.major2 && !p.major) return "Choose your first major before a second one.";
+  if (p.major2 && p.major2 === p.major) return "Your second major is the same as your first.";
+  if (p.minor2 && !p.minor) return "Choose your first minor before a second one.";
+  if (p.minor2 && p.minor2 === p.minor) return "Your second minor is the same as your first.";
   return "";
 }
 
 async function loadAccount() {
   const uid = S.user.id;
+  // Has the events update been run on the database? If not, the app hides those parts.
+  const probe = await sb.from("event_signups").select("announcement_id").limit(1);
+  S.v3 = !probe.error;
   const [p, a] = await Promise.all([
     sb.from("students").select("*").eq("id", uid).maybeSingle(),
     sb.from("admins").select("user_id").eq("user_id", uid).maybeSingle()
@@ -376,7 +426,7 @@ async function loadAccount() {
   if (!S.profile) {
     const row = profileRow(S.user.user_metadata || {});
     if (!checkProfile(row)) {
-      const ins = await sb.from("students").insert({ id: uid, email: S.user.email, ...row }).select().single();
+      const ins = await sb.from("students").insert({ id: uid, email: S.user.email, ...dbRow(row) }).select().single();
       if (ins.error) { S.draft = row; S.formError = friendly(ins.error); }
       else S.profile = ins.data;
     }
@@ -392,14 +442,23 @@ async function loadData() {
     sb.from("clubs").select("*").order("name"),
     sb.from("memberships").select("*").eq("student_id", uid),
     sb.from("club_committee").select("club_id, role").eq("student_id", uid),
-    sb.from("announcements").select("id, club_id, title, body, created_at").order("created_at", { ascending: false }).limit(60)
+    sb.from("announcements").select("*").order("created_at", { ascending: false }).limit(80)
   ]);
   for (const r of [c, m, k, f]) if (r.error) throw r.error;
   S.clubs = c.data;
   S.mine = new Map(m.data.map((r) => [r.club_id, r]));
   S.committee = k.data;
   const visible = new Set([...activeIds(), ...k.data.map((r) => r.club_id)]);
-  S.feed = f.data.filter((r) => visible.has(r.club_id));
+  const school = S.profile && S.profile.school;
+  S.feed = f.data.filter((r) => visible.has(r.club_id) || r.audience_all || (!!school && (r.audience_schools || []).includes(school)));
+  S.signups = new Set(); S.myEvents = [];
+  if (S.v3) {
+    const e = await sb.from("event_signups").select("announcement_id, announcements(*)").eq("student_id", uid);
+    if (e.error) throw e.error;
+    S.signups = new Set(e.data.map((r) => r.announcement_id));
+    S.myEvents = e.data.map((r) => r.announcements).filter((a) => a && a.event_start)
+      .sort((x, y) => new Date(x.event_start) - new Date(y.event_start));
+  }
   S.toCheck = {};
   if (k.data.length) {
     const p = await sb.from("memberships").select("club_id").eq("status", "pending").in("club_id", k.data.map((r) => r.club_id));
@@ -414,9 +473,9 @@ async function loadManage(clubId) {
   const club = S.clubs.find((c) => c.id === clubId) || {};
   const [m, p, qr] = await Promise.all([
     sb.from("memberships")
-      .select("*, students(first_name, last_name, student_id, email, phone, year, school, major, minor)")
+      .select("*, students(*)")
       .eq("club_id", clubId).order("joined_at"),
-    sb.from("announcements").select("id, title, body, created_at").eq("club_id", clubId).order("created_at", { ascending: false }),
+    sb.from("announcements").select("*").eq("club_id", clubId).order("created_at", { ascending: false }),
     club.pay_qr_path ? imageUrl("club-qr", club.pay_qr_path).catch(() => "") : ""
   ]);
   if (S.manage.clubId !== clubId) return;
@@ -424,6 +483,12 @@ async function loadManage(clubId) {
   S.manage.members = (m.data || []).filter((r) => r.students);
   S.manage.posts = p.data || [];
   S.manage.qrUrl = qr;
+  const withSignups = S.manage.posts.filter((a) => a.signups_open).map((a) => a.id);
+  if (S.v3 && withSignups.length) {
+    const c = await sb.from("event_signups").select("announcement_id").in("announcement_id", withSignups);
+    if (S.manage.clubId !== clubId) return;
+    for (const r of c.data || []) S.manage.counts[r.announcement_id] = (S.manage.counts[r.announcement_id] || 0) + 1;
+  }
   render();
 }
 
@@ -446,29 +511,118 @@ async function loadAdmin() {
 /* ---------------------------------------------------------------------
    Screens
    --------------------------------------------------------------------- */
+function clubColour(id) {
+  const c = S.clubs.find((x) => x.id === id);
+  if (c && /^#[0-9a-f]{6}$/i.test(c.color || "")) return c.color;
+  const ids = S.clubs.map((x) => x.id).sort((a, b) => a - b);
+  // Hand out colours that are far apart first (blue, orange, green, purple…), so neighbouring clubs don't look alike.
+  const order = [6, 2, 4, 8, 0, 5, 3, 1, 7, 10, 9, 11], list = CONFIG.CLUB_COLOURS;
+  const i = ids.indexOf(id), n = i < 0 ? Math.abs(id) || 0 : i;
+  return list[order[n % order.length] % list.length][0];
+}
+const clubChip = (id) => `<span class="chip club" style="--club:${clubColour(id)}">${esc(clubName(id))}</span>`;
 const clubName = (id) => (S.clubs.find((c) => c.id === id) || {}).name || "Club";
 const my = (id) => S.mine.get(id) || null;
+const findPost = (id) => [...S.feed, ...S.myEvents, ...(S.manage.posts || [])].find((a) => a.id === id);
+function eventWhen(a) {
+  const s = new Date(a.event_start), e = a.event_end ? new Date(a.event_end) : null;
+  const t = (x) => x.toLocaleTimeString("en-MY", { hour: "numeric", minute: "2-digit" });
+  const d = s.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" });
+  const same = e && e.toDateString() === s.toDateString();
+  return d + " · " + t(s) + (e ? " – " + (same ? t(e) : e.toLocaleDateString("en-MY", { day: "numeric", month: "short" }) + " " + t(e)) : "");
+}
+const eventLine = (a) => (a.event_start ? `<p class="when">${esc(eventWhen(a))}${a.location ? " · " + esc(a.location) : ""}</p>` : "");
+function audienceText(a) {
+  if (a.audience_all) return "Open to all students";
+  const sc = a.audience_schools || [];
+  return sc.length ? "Members, and students in " + sc.join(", ") : "Members only";
+}
+// Times for calendars: an event with no end time is treated as one hour long.
+function eventTimes(a) { const s = new Date(a.event_start); return [s, a.event_end ? new Date(a.event_end) : new Date(s.getTime() + 3600000)]; }
+const icsDate = (d) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+const icsText = (s) => String(s || "").replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+function downloadIcs(a) {
+  const [s, e] = eventTimes(a);
+  const fold = (l) => (l.length <= 73 ? l : l.match(/.{1,73}/g).join("\r\n "));
+  const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Clubs app//EN", "CALSCALE:GREGORIAN", "BEGIN:VEVENT",
+    `UID:post-${a.id}@clubs-app`, `DTSTAMP:${icsDate(new Date())}`, `DTSTART:${icsDate(s)}`, `DTEND:${icsDate(e)}`,
+    `SUMMARY:${icsText(a.title + " (" + clubName(a.club_id) + ")")}`, a.location ? `LOCATION:${icsText(a.location)}` : "",
+    `DESCRIPTION:${icsText(a.body)}`, "END:VEVENT", "END:VCALENDAR"].filter(Boolean).map(fold).join("\r\n");
+  const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar" }));
+  const link = document.createElement("a");
+  link.href = url; link.download = (a.title.replace(/[^\w\- ]+/g, "").trim().slice(0, 40) || "event") + ".ics";
+  document.body.appendChild(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+function googleCalUrl(a) {
+  const [s, e] = eventTimes(a);
+  return "https://calendar.google.com/calendar/render?" + new URLSearchParams({
+    action: "TEMPLATE", text: a.title + " (" + clubName(a.club_id) + ")", dates: icsDate(s) + "/" + icsDate(e),
+    details: a.body || "", location: a.location || "" }).toString();
+}
+const calButtons = (a) => `<div class="row">
+    <button class="btn ghost small" data-act="ics" data-id="${a.id}">Add to Apple / Outlook calendar</button>
+    <a class="btn ghost small" href="${esc(googleCalUrl(a))}" target="_blank" rel="noopener">Add to Google Calendar</a>
+  </div>`;
+function signupBlock(a, onPage = false) {
+  if (!S.v3 || !a.signups_open || !a.event_start) return "";
+  const started = new Date(a.event_start) <= new Date();
+  if (S.signups.has(a.id)) {
+    if (!onPage) return `<div class="row"><span class="chip mark">Signed up</span></div>`;
+    return `<div class="row"><span class="chip mark">Signed up</span>
+        ${started ? "" : `<button class="btn quiet small" data-act="ask-unsign" data-id="${a.id}">Cancel sign-up</button>`}</div>
+      ${started ? "" : calButtons(a)}`;
+  }
+  if (started) return `<p class="meta">Sign-ups have closed.</p>`;
+  return onPage ? `<button class="btn wide" data-act="ask-sign" data-id="${a.id}">Sign up</button>`
+    : `<button class="btn small" style="align-self:flex-start" data-act="open-post" data-id="${a.id}">Sign up</button>`;
+}
+function noticeHtml(a) {
+  const member = activeIds().includes(a.club_id) || isCommittee(a.club_id);
+  return `<article class="card notice tap" data-act="open-post" data-id="${a.id}">
+    <div class="row between">${clubChip(a.club_id)}<span class="meta">${when(a.created_at)}</span></div>
+    <h3><button class="titlelink" data-act="open-post" data-id="${a.id}">${esc(a.title)}</button></h3>
+    ${eventLine(a)}
+    <p class="body">${esc(a.body)}</p>
+    ${!member && (a.audience_all || (a.audience_schools || []).length) ? `<p class="meta">${esc(audienceText(a))}</p>` : ""}
+    ${signupBlock(a)}
+  </article>`;
+}
 const canTakePayment = (c) => !(Number(c.fee) > 0) || !!c.pay_account_number || !!c.pay_qr_path;
 const activeIds = () => [...S.mine.values()].filter((r) => r.status === "active").map((r) => r.club_id);
 const isCommittee = (id) => S.committee.some((c) => c.club_id === id);
 const val = (k) => esc(S.draft[k] ?? "");
 
-// Options for the Major or Minor dropdown of one school.
+// Options for one Major or Minor dropdown of a school.
 function courseOptions(kind, school, current, forceOther = false) {
   const c = CONFIG.COURSES[school] || {};
-  const list = (kind === "minor" ? (c.minors || c.majors) : c.majors) || [];
+  const list = (kind.startsWith("minor") ? (c.minors || c.majors) : c.majors) || [];
   const isOther = forceOther || (!!current && !list.includes(current));
-  const first = kind === "major" ? "Not decided yet" : "- (no minor)";
+  const first = kind === "major" ? "Not decided yet" : kind === "minor" ? "- (no minor)" : "- (none)";
   return { isOther, html: `<option value="">${first}</option>`
     + list.map((o) => `<option ${current === o ? "selected" : ""}>${esc(o)}</option>`).join("")
     + `<option value="${OTHER}" ${isOther ? "selected" : ""}>Other (type it in)</option>` };
 }
+const COURSE_FIELDS = [
+  ["major", "Major or course", 'Choose your school first. Year 1 students can leave this as "Not decided yet".', "Type your major"],
+  ["major2", "Second major", "Only if you are doing a double major.", "Type your second major"],
+  ["minor", "Minor", 'Not everyone has one. Choose "-" if you don\'t.', "Type your minor"],
+  ["minor2", "Second minor", "Only if you have two minors.", "Type your second minor"]
+];
+const courseKinds = () => COURSE_FIELDS.map((f) => f[0]).filter((k) => S.v3 || !k.endsWith("2"));
 function profileFields(d, withPhoneNote = true) {
   const yr = Number(d.year) || 0;
   const school = d.school || "";
   const cur = (k) => (d[k] === OTHER ? (d[k + "_other"] || "").trim() : d[k]) || "";
-  const major = courseOptions("major", school, cur("major"), d.major === OTHER), minor = courseOptions("minor", school, cur("minor"), d.minor === OTHER);
-  const majorOther = major.isOther, minorOther = minor.isOther;
+  const courses = COURSE_FIELDS.filter(([k]) => courseKinds().includes(k)).map(([k, label, hint, otherLabel]) => {
+    const o = courseOptions(k, school, cur(k), d[k] === OTHER);
+    return `<label>${label} <small>${esc(hint)}</small>
+        <select name="${k}" id="f-${k}">${o.html}</select>
+      </label>
+      <label id="f-${k}-other-wrap" ${o.isOther ? "" : "hidden"}>${otherLabel}
+        <input name="${k}_other" id="f-${k}-other" value="${o.isOther ? esc(cur(k)) : ""}" autocomplete="off">
+      </label>`;
+  }).join("");
   return `
     <div class="two">
       <label>Year
@@ -485,18 +639,7 @@ function profileFields(d, withPhoneNote = true) {
         </select>
       </label>
     </div>
-    <label>Major or course <small>Choose your school first. Year 1 students can leave this as "Not decided yet".</small>
-      <select name="major" id="f-major">${major.html}</select>
-    </label>
-    <label id="f-major-other-wrap" ${majorOther ? "" : "hidden"}>Type your major
-      <input name="major_other" id="f-major-other" value="${majorOther ? esc(cur("major")) : ""}" autocomplete="off">
-    </label>
-    <label>Minor <small>Not everyone has one. Choose "-" if you don't.</small>
-      <select name="minor" id="f-minor">${minor.html}</select>
-    </label>
-    <label id="f-minor-other-wrap" ${minorOther ? "" : "hidden"}>Type your minor
-      <input name="minor_other" id="f-minor-other" value="${minorOther ? esc(cur("minor")) : ""}" autocomplete="off">
-    </label>
+    ${courses}
     <label>Phone number <small>Optional. ${withPhoneNote ? "Shared only with the committees of clubs you join." : ""}</small>
       <input name="phone" id="f-phone" type="tel" value="${esc(d.phone ?? "")}" placeholder="e.g. 012-345 6789" autocomplete="tel">
     </label>`;
@@ -518,13 +661,13 @@ function viewAuth() {
       ${err}
       <form data-form="signup1" novalidate>
         <div class="two">
-          <label>First name<input name="first_name" id="f-first" value="${val("first_name")}" required autocomplete="given-name"></label>
-          <label>Last name<input name="last_name" id="f-last" value="${val("last_name")}" required autocomplete="family-name"></label>
+          <label>First name<input name="first_name" id="f-first" value="${val("first_name")}" required autocomplete="given-name" placeholder="e.g. John"></label>
+          <label>Last name<input name="last_name" id="f-last" value="${val("last_name")}" required autocomplete="family-name" placeholder="e.g. Doe"></label>
         </div>
         <label>Monash student ID <small>The number on your student card, not your IC number.</small>
-          <input name="student_id" id="f-sid" value="${val("student_id")}" required inputmode="numeric" autocomplete="off">
+          <input name="student_id" id="f-sid" value="${val("student_id")}" required inputmode="numeric" autocomplete="off" placeholder="e.g. 34120001">
         </label>
-        <label>Student email<input name="email" id="f-email" type="email" value="${val("email")}" required autocomplete="email"></label>
+        <label>Student email<input name="email" id="f-email" type="email" value="${val("email")}" required autocomplete="email" placeholder="e.g. jdoe0001@student.monash.edu"></label>
         <label>Password <small>At least 8 characters.</small>
           <input name="password" id="f-pass" type="password" required minlength="8" autocomplete="new-password">
         </label>
@@ -564,8 +707,8 @@ function viewProfileSetup() {
     ${S.formError ? `<div class="error" role="alert">${esc(S.formError)}</div>` : ""}
     <form data-form="profile-create" novalidate>
       <div class="two">
-        <label>First name<input name="first_name" id="p-first" value="${esc(d.first_name ?? "")}" required></label>
-        <label>Last name<input name="last_name" id="p-last" value="${esc(d.last_name ?? "")}" required></label>
+        <label>First name<input name="first_name" id="p-first" value="${esc(d.first_name ?? "")}" required placeholder="e.g. John"></label>
+        <label>Last name<input name="last_name" id="p-last" value="${esc(d.last_name ?? "")}" required placeholder="e.g. Doe"></label>
       </div>
       <label>Monash student ID <small>The number on your student card, not your IC number.</small>
         <input name="student_id" id="p-sid" value="${esc(d.student_id ?? "")}" required inputmode="numeric">
@@ -579,25 +722,37 @@ function viewProfileSetup() {
 
 function viewHome() {
   const p = S.profile;
+  let posts;
   if (!S.feed.length) {
     const joined = activeIds().length > 0;
     const waiting = [...S.mine.values()].some((r) => r.status === "pending");
     const msg = joined ? "No announcements yet. Posts from your clubs will be pinned here."
       : waiting ? "Your payment is being checked by the club. Its announcements will be pinned here once you're approved."
       : "You haven't joined a club yet. Join one and its announcements will be pinned here.";
-    return `<h1>Hi, ${esc(p.first_name)}</h1>
-      <div class="empty">
-        <p>${msg}</p>
-        ${joined || waiting ? "" : `<button class="btn" data-act="tab" data-tab="clubs">Browse clubs</button>`}
-      </div>`;
+    posts = `<div class="empty"><p>${msg}</p>${joined || waiting ? "" : `<button class="btn" data-act="tab" data-tab="clubs">Browse clubs</button>`}</div>`;
+  } else {
+    const shown = S.allPosts ? S.feed : S.feed.slice(0, 3);
+    posts = `<div class="stack" style="gap:20px">${shown.map(noticeHtml).join("")}</div>
+      ${S.feed.length > 3 ? `<button class="btn quiet" data-act="toggle-posts">${S.allPosts ? "Show fewer" : "See all " + S.feed.length + " announcements"}</button>` : ""}`;
   }
-  return `<div class="stack"><h1>Hi, ${esc(p.first_name)}</h1><p class="lead">Latest from your clubs.</p></div>
-    <div class="stack" style="gap:20px">
-      ${S.feed.map((a) => `<article class="card notice">
-        <div class="row between"><span class="chip">${esc(clubName(a.club_id))}</span><span class="meta">${when(a.created_at)}</span></div>
-        <h3>${esc(a.title)}</h3>
-        <p class="body">${esc(a.body)}</p>
-      </article>`).join("")}
+  return `<h1>Hi, ${esc(p.first_name)}</h1>
+    <section class="stack" aria-labelledby="h-posts"><h2 id="h-posts">Announcements</h2>${posts}</section>
+    ${S.v3 ? `<section class="stack" aria-labelledby="h-cal">${calendarHtml()}</section>` : ""}`;
+}
+
+function viewPost() {
+  const a = findPost(S.post);
+  if (!a) return `<button class="link" style="align-self:flex-start" data-act="post-back">Back</button><p class="meta">This post is no longer available.</p>`;
+  const member = activeIds().includes(a.club_id) || isCommittee(a.club_id);
+  return `<button class="link" style="align-self:flex-start" data-act="post-back">Back</button>
+    <div class="stack">
+      <div class="row between">${clubChip(a.club_id)}<span class="meta">Posted ${when(a.created_at)}</span></div>
+      <h1>${esc(a.title)}</h1>
+      ${a.event_start ? `<div class="card"><span class="meta">When</span><p class="when" style="font-size:1.1rem">${esc(eventWhen(a))}</p>
+        ${a.location ? `<span class="meta">Where</span><p style="font-weight:700">${esc(a.location)}</p>` : ""}</div>` : ""}
+      <p class="post-body">${esc(a.body)}</p>
+      ${!member && (a.audience_all || (a.audience_schools || []).length) ? `<p class="meta">${esc(audienceText(a))}</p>` : ""}
+      ${signupBlock(a, true)}
     </div>`;
 }
 
@@ -630,7 +785,7 @@ function clubListHtml() {
           : `<button class="btn small" data-act="ask-join" data-club="${c.id}">${fee ? "Join · " + money(fee) : "Join"}</button>`;
         return `<div class="card">
           <div class="row between">
-            <h3 class="grow">${esc(c.name)}</h3>
+            <h3 class="grow"><i class="sw-dot" style="background:${clubColour(c.id)}"></i>${esc(c.name)}</h3>
             ${chip}
           </div>
           ${c.description ? `<p class="meta">${esc(c.description)}</p>` : ""}
@@ -701,6 +856,65 @@ function viewClubs() {
     <div id="club-list" class="stack" style="gap:18px">${clubListHtml()}</div>`;
 }
 
+function calendarHtml() {
+  const now = new Date();
+  const first = CONFIG.CALENDAR_FIRST_YEAR, last = CONFIG.CALENDAR_LAST_YEAR;
+  const m = S.calMonth || new Date(now.getFullYear(), now.getMonth(), 1);
+  const key = (d) => d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate();
+  const byDay = {};
+  for (const a of S.myEvents) (byDay[key(new Date(a.event_start))] ||= []).push(a);
+  const sel = S.calDay;
+  const gridStart = new Date(m.getFullYear(), m.getMonth(), 1 - new Date(m.getFullYear(), m.getMonth(), 1).getDay());  // the Sunday on or before the 1st
+  const shownClubs = new Set();
+  let cells = ["S", "M", "T", "W", "T", "F", "S"].map((d) => `<div class="dow">${d}</div>`).join("");
+  for (let i = 0; i < 42; i++) {
+    const date = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i);
+    const inMonth = date.getMonth() === m.getMonth();
+    const evs = inMonth ? (byDay[key(date)] || []) : [];
+    evs.forEach((a) => shownClubs.add(a.club_id));
+    const dots = evs.slice(0, 3).map((a) => `<i style="background:${clubColour(a.club_id)}" title="${esc(clubName(a.club_id))}"></i>`).join("") + (evs.length > 3 ? "<b>+</b>" : "");
+    const cls = ["day", inMonth ? "" : "out", key(date) === key(now) ? "today" : "", inMonth && sel && key(sel) === key(date) ? "sel" : ""].join(" ").replace(/\s+/g, " ").trim();
+    const label = date.toLocaleDateString("en-MY", { day: "numeric", month: "long" }) + (evs.length ? ", " + evs.map((a) => clubName(a.club_id)).join(", ") : "");
+    cells += inMonth
+      ? `<button class="${cls}" data-act="cal-day" data-day="${date.getDate()}" aria-label="${esc(label)}"><span class="n">${date.getDate()}</span><span class="dots">${dots}</span></button>`
+      : `<div class="${cls}" aria-hidden="true"><span class="n">${date.getDate()}</span><span class="dots"></span></div>`;
+  }
+  const months = Array.from({ length: 12 }, (_, i) => `<option value="${i}" ${i === m.getMonth() ? "selected" : ""}>${new Date(2000, i, 1).toLocaleDateString("en-MY", { month: "long" })}</option>`).join("");
+  const years = Array.from({ length: last - first + 1 }, (_, i) => first + i).map((y) => `<option ${y === m.getFullYear() ? "selected" : ""}>${y}</option>`).join("");
+  const atStart = m.getFullYear() <= first && m.getMonth() === 0, atEnd = m.getFullYear() >= last && m.getMonth() === 11;
+  const thisMonth = m.getFullYear() === now.getFullYear() && m.getMonth() === now.getMonth();
+  const legend = [...shownClubs].map(clubChip).join(" ");
+
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const list = sel ? (byDay[key(sel)] || []) : S.myEvents.filter((a) => new Date(a.event_end || a.event_start) >= startToday);
+  const item = (a) => {
+    const past = new Date(a.event_start) <= now;
+    return `<div class="card">
+      <div class="row between">${clubChip(a.club_id)}${past ? `<span class="meta">Past</span>` : ""}</div>
+      <h3><button class="titlelink" data-act="open-post" data-id="${a.id}">${esc(a.title)}</button></h3>
+      ${eventLine(a)}
+      ${past ? "" : calButtons(a) + `<button class="btn quiet small" style="align-self:flex-start" data-act="ask-unsign" data-id="${a.id}">Cancel sign-up</button>`}
+    </div>`;
+  };
+  const empty = !S.myEvents.length
+    ? `<p class="meta">Events you sign up for appear here, marked with a dot in each club's colour. Tap an announcement and press Sign up.</p>`
+    : sel ? `<p class="meta">No events on this day.</p>` : `<p class="meta">Nothing coming up. Past events stay marked on the calendar.</p>`;
+  return `<div class="row between"><h2 id="h-cal">My calendar</h2>${thisMonth ? "" : `<button class="btn quiet small" data-act="cal-today">Today</button>`}</div>
+    <div class="card">
+      <div class="cal-head">
+        <button class="btn quiet small" data-act="cal-move" data-step="-1" aria-label="Previous month" ${atStart ? "disabled" : ""}>‹</button>
+        <select id="cal-m" aria-label="Month">${months}</select>
+        <select id="cal-y" aria-label="Year">${years}</select>
+        <button class="btn quiet small" data-act="cal-move" data-step="1" aria-label="Next month" ${atEnd ? "disabled" : ""}>›</button>
+      </div>
+      <div class="cal">${cells}</div>
+      ${legend ? `<div class="row">${legend}</div>` : ""}
+    </div>
+    <div class="row between"><h3>${sel ? sel.toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" }) : "Coming up"}</h3>
+      ${sel ? `<button class="link" data-act="cal-all">Show all coming up</button>` : ""}</div>
+    <div class="stack">${list.length ? list.map(item).join("") : empty}</div>`;
+}
+
 function viewManage() {
   const mine = S.committee.map((c) => c.club_id);
   const id = S.manage.clubId;
@@ -741,18 +955,33 @@ function viewManage() {
         <thead><tr><th>Name</th><th>Student ID</th><th>Year</th><th>School</th><th>Major</th><th>Minor</th><th>Email</th><th>Phone</th><th>Joined</th><th>Paid</th><th>Reference</th></tr></thead>
         <tbody>${active.map((r) => { const s = r.students; return `<tr>
           <td>${full(s)}</td><td class="num">${esc(s.student_id)}</td><td class="num">${esc(s.year)}</td>
-          <td>${esc(s.school)}</td><td>${esc(s.major || "")}</td><td>${esc(s.minor || "")}</td>
+          <td>${esc(s.school)}</td><td>${esc([s.major, s.major2].filter(Boolean).join(" / "))}</td><td>${esc([s.minor, s.minor2].filter(Boolean).join(" / "))}</td>
           <td>${esc(s.email)}</td><td class="num">${esc(s.phone || "")}</td><td>${day(r.joined_at)}</td>
           <td class="num">${r.paid_amount != null ? money(r.paid_amount) : ""}</td><td class="num">${esc(r.pay_ref || "")}</td></tr>`; }).join("")}
         </tbody></table></div>`;
 
   const posts = m.posts === null ? "" : !m.posts.length ? `<p class="meta">Nothing posted yet.</p>`
-    : m.posts.map((a) => `<div class="card">
+    : m.posts.map((a) => {
+        const n = m.counts[a.id] || 0, list = m.signupLists[a.id];
+        return `<div class="card">
         <div class="row between"><h3 class="grow">${esc(a.title)}</h3><span class="meta">${when(a.created_at)}</span></div>
+        ${eventLine(a)}
         <p class="meta" style="white-space:pre-wrap">${esc(a.body)}</p>
+        ${S.v3 ? `<p class="meta"><strong>Who can see it:</strong> ${esc(audienceText(a))}</p>` : ""}
+        ${a.signups_open ? `<div class="row"><strong>${n} signed up</strong>
+          ${n ? `<button class="btn ghost small" data-act="${list ? "hide-signups" : "show-signups"}" data-id="${a.id}">${list ? "Hide list" : "See who"}</button>` : ""}</div>` : ""}
+        ${list ? signupTable(a.id, list) : ""}
         ${canEdit ? `<div class="row"><button class="btn danger small" data-act="ask-delete-post" data-id="${a.id}">Delete</button></div>` : ""}
-      </div>`).join("");
+      </div>`; }).join("");
 
+  const colourForm = !canEdit || m.members === null || !("color" in club) ? "" : `<div class="stack">
+      <h2>Club colour</h2>
+      <div class="card">
+        <p class="meta">Shown on students' calendars and on your posts, so they can tell clubs apart.</p>
+        <div class="swatches">${CONFIG.CLUB_COLOURS.map(([hex, name]) => `<button class="sw ${clubColour(id).toLowerCase() === hex.toLowerCase() ? "on" : ""}"
+          style="--c:${hex}" data-act="set-colour" data-colour="${hex}" aria-label="${name}" title="${name}"></button>`).join("")}</div>
+      </div>
+    </div>`;
   const qrShown = m.qrPreview || m.qrUrl;
   const feeForm = !canEdit || m.members === null ? "" : `<div class="stack">
       <h2>Membership fee</h2>
@@ -782,16 +1011,53 @@ function viewManage() {
         ${active.length ? `<button class="btn ghost small" data-act="copy-members">Copy for Google Sheets</button>` : ""}</div>
       ${members}
     </div>
-    ${canPost ? `<div class="stack">
-      <h2>Post an announcement</h2>
-      <form data-form="post" novalidate class="card">
-        <label>Title<input name="title" id="a-title" required maxlength="120" placeholder="e.g. Annual general meeting"></label>
-        <label>Message<textarea name="body" id="a-body" required placeholder="What, when, where, and how it helps your members."></textarea></label>
-        <button class="btn">Post to members</button>
-      </form>
-    </div>` : ""}
+    ${m.members !== null && (canPost || (S.isAdmin && S.v3)) ? postFormHtml() : ""}
     <div class="stack"><h2>Posted</h2>${posts}</div>
+    ${colourForm}
     ${feeForm}`;
+}
+
+function signupTable(id, list) {
+  if (!list.length) return `<p class="meta">Nobody has signed up yet.</p>`;
+  return `<div class="scroll"><table>
+      <thead><tr><th>Name</th><th>Student ID</th><th>Year</th><th>School</th><th>Email</th><th>Phone</th><th>Signed up</th></tr></thead>
+      <tbody>${list.map((r) => { const s = r.students || {}; return `<tr><td>${esc(s.first_name)} ${esc(s.last_name)}</td>
+        <td class="num">${esc(s.student_id)}</td><td class="num">${esc(s.year)}</td><td>${esc(s.school)}</td><td>${esc(s.email)}</td>
+        <td class="num">${esc(s.phone || "")}</td><td>${day(r.signed_up_at)}</td></tr>`; }).join("")}</tbody></table></div>
+    <button class="btn ghost small" style="align-self:flex-start" data-act="copy-signups" data-id="${id}">Copy for Google Sheets</button>`;
+}
+function postFormHtml(withClubPicker = false) {
+  return `<div class="stack">
+    <h2>Post an announcement</h2>
+    <form data-form="post" novalidate class="card">
+      ${withClubPicker ? `<label>Club<select name="club_id" id="a-club" required>
+          <option value="">Choose a club</option>
+          ${S.clubs.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select></label>` : ""}
+      <label>Title<input name="title" id="a-title" required maxlength="120" placeholder="e.g. Fintech Ideathon 2026"></label>
+      <label>Message<textarea name="body" id="a-body" required placeholder="What, when, where, and how it helps your members."></textarea></label>
+      ${S.v3 ? `
+      <label class="check"><input type="checkbox" name="is_event" id="a-is-event"> This is an event with a date</label>
+      <div id="a-event-fields" class="stack" hidden>
+        <div class="two">
+          <label>Date<input type="date" name="date" id="a-date"></label>
+          <label>Place <small>Optional</small><input name="location" id="a-place" placeholder="e.g. Building 9, Room 9-2-03" autocomplete="off"></label>
+        </div>
+        <div class="two">
+          <label>Starts<input type="time" name="start" id="a-start"></label>
+          <label>Ends <small>Optional</small><input type="time" name="end" id="a-end"></label>
+        </div>
+        <label class="check"><input type="checkbox" name="signups" id="a-signups" checked> Let students sign up (it goes into their calendar)</label>
+      </div>
+      <fieldset class="aud">
+        <legend>Who can see this?</legend>
+        <label class="check"><input type="checkbox" checked disabled> Members of this club (always)</label>
+        <label class="check"><input type="checkbox" name="aud_all" id="a-aud-all"> All students</label>
+        <p class="meta">Or also students in these schools:</p>
+        ${CONFIG.SCHOOLS.map((s, i) => `<label class="check"><input type="checkbox" name="aud_school" value="${esc(s)}" id="a-aud-${i}"> ${esc(s)}</label>`).join("")}
+      </fieldset>` : ""}
+      <button class="btn">Post</button>
+    </form>
+  </div>`;
 }
 
 function viewAdmin() {
@@ -831,6 +1097,7 @@ function viewAdmin() {
   return `<div class="stack"><h1>Admin</h1>
       <p class="lead">${a.students ?? "–"} student${a.students === 1 ? "" : "s"} signed up · ${S.clubs.length} club${S.clubs.length === 1 ? "" : "s"}</p></div>
     ${a.error ? `<div class="error" role="alert">${esc(a.error)}</div>` : ""}
+    ${S.v3 && S.clubs.length ? postFormHtml(true) : ""}
     <div class="stack">
       <h2>Add a club</h2>
       <form data-form="add-club" novalidate class="card">
@@ -849,12 +1116,13 @@ function viewAdmin() {
 function viewProfile() {
   const p = S.profile;
   if (S.editing) {
+    const p = S.editDraft || S.profile;     // what they typed, if a check failed
     return `<h1>Edit your details</h1>
       ${S.formError ? `<div class="error" role="alert">${esc(S.formError)}</div>` : ""}
       <form data-form="profile-update" novalidate>
         <div class="two">
-          <label>First name<input name="first_name" id="e-first" value="${esc(p.first_name)}" required></label>
-          <label>Last name<input name="last_name" id="e-last" value="${esc(p.last_name)}" required></label>
+          <label>First name<input name="first_name" id="e-first" value="${esc(p.first_name)}" required placeholder="e.g. John"></label>
+          <label>Last name<input name="last_name" id="e-last" value="${esc(p.last_name)}" required placeholder="e.g. Doe"></label>
         </div>
         <label>Monash student ID<input name="student_id" id="e-sid" value="${esc(p.student_id)}" required inputmode="numeric"></label>
         ${profileFields(p)}
@@ -868,8 +1136,8 @@ function viewProfile() {
       <dt>Email</dt><dd>${esc(p.email)}</dd>
       <dt>Year</dt><dd>Year ${esc(p.year)}</dd>
       <dt>School</dt><dd>${esc(p.school)}</dd>
-      <dt>Major</dt><dd>${esc(p.major || "Not decided yet")}</dd>
-      <dt>Minor</dt><dd>${esc(p.minor || "-")}</dd>
+      <dt>Major</dt><dd>${esc([p.major || "Not decided yet", p.major2].filter(Boolean).join(" and "))}</dd>
+      <dt>Minor</dt><dd>${esc([p.minor || "-", p.minor2].filter(Boolean).join(" and "))}</dd>
       <dt>Phone</dt><dd>${esc(p.phone || "Not set")}</dd>
     </dl></div>
     <p class="meta">Update this once and every club you've joined sees the change. Only the committees of clubs you join can see these details.</p>
@@ -904,6 +1172,16 @@ function viewSheet() {
       <p class="lead">Members will no longer see it.</p>
       ${err}
       <button class="btn danger wide" data-act="delete-post" data-id="${s.id}">Delete</button>`;
+  } else if (s.type === "sign" || s.type === "unsign") {
+    const a = findPost(s.id) || { title: "this event", club_id: 0 };
+    body = s.type === "sign" ? `<h2>Sign up for ${esc(a.title)}?</h2>
+        ${a.event_start ? `<p class="when">${esc(eventWhen(a))}${a.location ? " · " + esc(a.location) : ""}</p>` : ""}
+        <p class="note">It goes into your calendar. ${esc(clubName(a.club_id))}'s committee will see your name, student ID, year, school, major, minor, email and phone number.</p>
+        ${err}<button class="btn wide" data-act="sign" data-id="${s.id}">Sign up</button>`
+      : `<h2>Cancel your sign-up for ${esc(a.title)}?</h2>
+        <p class="lead">It will be removed from your calendar. You can sign up again while sign-ups are open.</p>
+        ${err}<button class="btn danger wide" data-act="unsign" data-id="${s.id}">Cancel sign-up</button>`;
+    if (s.type === "unsign") close = "Keep it";
   } else if (s.type === "receipt") {
     close = "Close";
     body = `<h2>${esc(s.name)}</h2>
@@ -941,10 +1219,10 @@ function render() {
   if (S.committee.length) tabs.push(["manage", waiting ? `Manage (${waiting})` : "Manage"]);
   if (S.isAdmin) tabs.push(["admin", "Admin"]);
   tabs.push(["profile", "Profile"]);
-  const view = { home: viewHome, clubs: S.pay ? viewPay : viewClubs, manage: viewManage, admin: viewAdmin, profile: viewProfile }[S.tab]();
+  const view = { home: S.post ? viewPost : viewHome, clubs: S.pay ? viewPay : viewClubs, manage: viewManage, admin: viewAdmin, profile: viewProfile }[S.tab]();
   app.innerHTML = `<header class="topbar">${brand}<span class="who">${esc(S.profile.email)}</span></header>
     <main>${view}</main>
-    <nav class="tabs" aria-label="Sections"><div>${tabs.map(([k, l]) =>
+    <nav class="tabs${tabs.length > 5 ? " many" : ""}" aria-label="Sections"><div>${tabs.map(([k, l]) =>
       `<button data-act="tab" data-tab="${k}" ${S.tab === k ? 'aria-current="page"' : ""}>${l}</button>`).join("")}</div></nav>`;
   overlay.innerHTML = viewSheet();
 }
@@ -971,7 +1249,7 @@ async function openPay(clubId) {
   await Promise.all([getRef, getQr]);
 }
 function goTab(tab) {
-  S.tab = tab; S.editing = false; S.formError = ""; S.pay = null;
+  S.tab = tab; S.editing = false; S.formError = ""; S.pay = null; S.post = null;
   if (tab === "manage") {
     const mine = S.committee.map((c) => c.club_id);
     if (mine.length === 1) { loadManage(mine[0]); return; }
@@ -983,7 +1261,7 @@ function goTab(tab) {
   if (tab === "home" || tab === "clubs") {
     loadData().then(() => {
       const typing = ["INPUT", "TEXTAREA", "SELECT"].includes((document.activeElement || {}).tagName);
-      if (S.tab === tab && !S.sheet && !S.pay && !typing) render();
+      if (S.tab === tab && !S.sheet && !S.pay && !S.post && !typing) render();
     }).catch(() => {});
   }
 }
@@ -1004,6 +1282,57 @@ const actions = {
   "ask-delete-post": (d) => { S.sheet = { type: "delete-post", id: Number(d.id) }; renderSheet(); },
   "sheet-close": () => { S.sheet = null; renderSheet(); },
   "pay-back": () => { S.pay = null; render(); },
+  "open-post": (d) => { S.tab = "home"; S.post = Number(d.id); S.sheet = null; render(); window.scrollTo(0, 0); },
+  "post-back": () => { S.post = null; render(); },
+  "toggle-posts": () => { S.allPosts = !S.allPosts; render(); },
+  "ask-sign": (d) => { S.sheet = { type: "sign", id: Number(d.id) }; renderSheet(); },
+  "ask-unsign": (d) => { S.sheet = { type: "unsign", id: Number(d.id) }; renderSheet(); },
+  "sign": (d, btn) => busy(btn, async () => {
+    const { error } = await sb.from("event_signups").insert({ announcement_id: Number(d.id), student_id: S.user.id });
+    if (error && error.code !== "23505") {
+      S.sheet.error = /row-level security|42501/.test(error.message + error.code) ? "Sign-ups for this event have closed." : friendly(error);
+      renderSheet(); return;
+    }
+    S.sheet = null; await loadData(); render(); toast("Signed up. It's in your calendar.");
+  }),
+  "unsign": (d, btn) => busy(btn, async () => {
+    const { error } = await sb.from("event_signups").delete().eq("announcement_id", Number(d.id)).eq("student_id", S.user.id);
+    if (error) { S.sheet.error = friendly(error); renderSheet(); return; }
+    S.sheet = null; await loadData(); render(); toast("Sign-up cancelled");
+  }),
+  "ics": (d) => { const a = findPost(Number(d.id)); if (a) downloadIcs(a); },
+  "cal-move": (d) => {
+    const now = new Date(), m = S.calMonth || new Date(now.getFullYear(), now.getMonth(), 1);
+    const next = new Date(m.getFullYear(), m.getMonth() + Number(d.step), 1);
+    if (next.getFullYear() < CONFIG.CALENDAR_FIRST_YEAR || next.getFullYear() > CONFIG.CALENDAR_LAST_YEAR) return;
+    S.calMonth = next; S.calDay = null; render();
+  },
+  "cal-today": () => { S.calMonth = null; S.calDay = null; render(); },
+  "set-colour": (d, btn) => busy(btn, async () => {
+    const clubId = S.manage.clubId;
+    const { error } = await sb.from("clubs").update({ color: d.colour }).eq("id", clubId);
+    if (error) { toast(friendly(error)); return; }
+    await loadData(); render(); toast("Colour saved");
+  }),
+  "cal-day": (d) => {
+    const now = new Date(), m = S.calMonth || new Date(now.getFullYear(), now.getMonth(), 1);
+    const date = new Date(m.getFullYear(), m.getMonth(), Number(d.day));
+    S.calDay = S.calDay && S.calDay.getTime() === date.getTime() ? null : date; render();
+  },
+  "cal-all": () => { S.calDay = null; render(); },
+  "show-signups": async (d, btn) => busy(btn, async () => {
+    const id = Number(d.id);
+    const { data, error } = await sb.from("event_signups").select("signed_up_at, students(*)").eq("announcement_id", id).order("signed_up_at");
+    if (error) { toast(friendly(error)); return; }
+    S.manage.signupLists[id] = data; render();
+  }),
+  "hide-signups": (d) => { delete S.manage.signupLists[Number(d.id)]; render(); },
+  "copy-signups": (d) => {
+    const clean = (v) => String(v ?? "").replace(/[\t\r\n]+/g, " ");
+    const rows = (S.manage.signupLists[Number(d.id)] || []).map((r) => { const s = r.students || {};
+      return [s.first_name, s.last_name, s.student_id, s.year, s.school, s.email, s.phone, day(r.signed_up_at)].map(clean).join("\t"); });
+    return copyText([["First name", "Last name", "Student ID", "Year", "School", "Email", "Phone", "Signed up"].join("\t"), ...rows].join("\n"), "Copied. Paste it into a Google Sheet.");
+  },
   "copy": (d) => copyText(d.text, "Copied"),
   "view-receipt": async (d) => {
     const r = S.manage.members.find((x) => x.student_id === d.student);
@@ -1022,8 +1351,8 @@ const actions = {
     if (error) { toast(friendly(error)); return; }
     await loadData(); await loadManage(clubId); toast("Payment approved");
   }),
-  "edit": () => { S.editing = true; S.formError = ""; render(); },
-  "edit-cancel": () => { S.editing = false; S.formError = ""; render(); },
+  "edit": () => { S.editing = true; S.editDraft = null; S.formError = ""; render(); },
+  "edit-cancel": () => { S.editing = false; S.editDraft = null; S.formError = ""; render(); },
   "manage": (d) => { S.tab = "manage"; loadManage(Number(d.club)); window.scrollTo(0, 0); },
   "manage-back": () => { S.manage = emptyManage(); render(); },
   "admin-open": (d) => { const id = Number(d.club); S.admin.open = S.admin.open === id ? null : id; render(); },
@@ -1049,10 +1378,10 @@ const actions = {
     S.sheet = null; await loadData(); await loadManage(S.manage.clubId); toast("Announcement deleted");
   }),
   "copy-members": () => {
-    const head = ["First name", "Last name", "Student ID", "Year", "School", "Major", "Minor", "Email", "Phone", "Joined", "Paid (RM)", "Reference", "Approved on"];
+    const head = ["First name", "Last name", "Student ID", "Year", "School", "Major", "Second major", "Minor", "Second minor", "Email", "Phone", "Joined", "Paid (RM)", "Reference", "Approved on"];
     const clean = (v) => String(v ?? "").replace(/[\t\r\n]+/g, " ");
     const rows = S.manage.members.filter((r) => r.status === "active").map((r) => { const s = r.students;
-      return [s.first_name, s.last_name, s.student_id, s.year, s.school, s.major, s.minor, s.email, s.phone, day(r.joined_at), r.paid_amount, r.pay_ref, r.checked_at ? day(r.checked_at) : ""].map(clean).join("\t"); });
+      return [s.first_name, s.last_name, s.student_id, s.year, s.school, s.major, s.major2, s.minor, s.minor2, s.email, s.phone, day(r.joined_at), r.paid_amount, r.pay_ref, r.checked_at ? day(r.checked_at) : ""].map(clean).join("\t"); });
     return copyText([head.join("\t"), ...rows].join("\n"), "Copied. Paste it into a Google Sheet.");
   },
   "toggle-club": (d, btn) => busy(btn, async () => {
@@ -1107,7 +1436,7 @@ const forms = {
     const row = profileRow(f); S.draft = row;
     const err = checkProfile(row);
     if (err) { S.formError = err; render(); return; }
-    const { data, error } = await sb.from("students").insert({ id: S.user.id, email: S.user.email, ...row }).select().single();
+    const { data, error } = await sb.from("students").insert({ id: S.user.id, email: S.user.email, ...dbRow(row) }).select().single();
     if (error) { S.formError = friendly(error); render(); return; }
     S.profile = data; S.formError = ""; S.draft = {};
     await loadData(); S.phase = "main"; render(); toast("Profile saved");
@@ -1115,17 +1444,33 @@ const forms = {
   "profile-update": async (f) => {
     const row = profileRow(f);
     const err = checkProfile(row);
-    if (err) { S.formError = err; render(); return; }
-    const { data, error } = await sb.from("students").update(row).eq("id", S.user.id).select().single();
-    if (error) { S.formError = friendly(error); render(); return; }
-    S.profile = data; S.editing = false; S.formError = ""; render(); toast("Details updated");
+    if (err) { S.formError = err; S.editDraft = f; render(); return; }
+    const { data, error } = await sb.from("students").update(dbRow(row)).eq("id", S.user.id).select().single();
+    if (error) { S.formError = friendly(error); S.editDraft = f; render(); return; }
+    S.profile = data; S.editing = false; S.editDraft = null; S.formError = ""; render(); toast("Details updated");
   },
-  "post": async (f) => {
+  "post": async (f, form) => {
+    if (form.querySelector("#a-club") && !f.club_id) { toast("Choose which club this is for."); return; }
     if (!f.title.trim() || !f.body.trim()) { toast("Write a title and a message."); return; }
-    const clubId = S.manage.clubId;
-    const { error } = await sb.from("announcements").insert({ club_id: clubId, author_id: S.user.id, title: f.title.trim(), body: f.body.trim() });
+    const clubId = f.club_id ? Number(f.club_id) : S.manage.clubId;
+    const row = { club_id: clubId, author_id: S.user.id, title: f.title.trim(), body: f.body.trim() };
+    if (S.v3) {
+      row.audience_all = !!f.aud_all;
+      row.audience_schools = row.audience_all ? [] : [...form.querySelectorAll("input[name=aud_school]:checked")].map((b) => b.value);
+      if (f.is_event) {
+        if (!f.date || !f.start) { toast("Add the event's date and start time."); return; }
+        const start = new Date(`${f.date}T${f.start}`), end = f.end ? new Date(`${f.date}T${f.end}`) : null;
+        if (isNaN(start)) { toast("Check the event's date and start time."); return; }
+        if (end && end < start) { toast("The end time is before the start time."); return; }
+        Object.assign(row, { event_start: start.toISOString(), event_end: end ? end.toISOString() : null,
+          location: (f.location || "").trim() || null, signups_open: !!f.signups });
+      }
+    }
+    const { error } = await sb.from("announcements").insert(row);
     if (error) { toast(friendly(error)); return; }
-    await loadData(); await loadManage(clubId); toast("Posted to members");
+    await loadData();
+    if (S.tab === "admin") await loadAdmin(); else await loadManage(clubId);
+    toast((row.audience_all ? "Posted to all students" : "Posted") + (S.tab === "admin" ? " for " + clubName(clubId) : ""));
   },
   "pay": async () => {
     const p = S.pay, clubId = p.clubId, uid = S.user.id;
@@ -1196,6 +1541,7 @@ const forms = {
 };
 
 document.addEventListener("click", (e) => {
+  if (e.target.closest("a[href]")) return;
   const el = e.target.closest("[data-act]");
   if (!el) return;
   if (el.classList.contains("sheet-back") && e.target !== el) return;   // clicks inside the sheet don't close it
@@ -1217,17 +1563,22 @@ document.addEventListener("change", async (e) => {
   const el = e.target;
   const byId = (id) => document.getElementById(id);
   if (el.id === "f-school") {                       // a different school has different majors and minors
-    for (const kind of ["major", "minor"]) {
+    for (const kind of courseKinds()) {
       byId("f-" + kind).innerHTML = courseOptions(kind, el.value, "").html;
       byId("f-" + kind + "-other-wrap").hidden = true;
       byId("f-" + kind + "-other").value = "";
     }
   }
-  if (el.id === "f-major" || el.id === "f-minor") {
+  if (["f-major", "f-minor", "f-major2", "f-minor2"].includes(el.id)) {
     const wrap = byId(el.id + "-other-wrap");
     wrap.hidden = el.value !== OTHER;
     if (!wrap.hidden) byId(el.id + "-other").focus();
   }
+  if (el.id === "cal-m" || el.id === "cal-y") {
+    S.calMonth = new Date(Number(byId("cal-y").value), Number(byId("cal-m").value), 1); S.calDay = null; render();
+  }
+  if (el.id === "a-is-event") byId("a-event-fields").hidden = !el.checked;
+  if (el.id === "a-aud-all") document.querySelectorAll("input[name=aud_school]").forEach((b) => { b.disabled = el.checked; if (el.checked) b.checked = false; });
   if (el.id === "pay-file" && S.pay) {
     const p = S.pay;
     try { p.file = await shrinkImage(el.files[0], 1400, 0.82); p.preview = URL.createObjectURL(p.file); p.error = ""; }
