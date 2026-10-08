@@ -1,0 +1,1281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Clubs demo</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230A6B63'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%23F4C430'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one phone-width column, like a campus notice board. Sticky title bar on top, tab bar at the bottom. */
+:root {
+  --bg: #EEF2F4;
+  --surface: #FFFFFF;
+  --ink: #12202A;
+  --muted: #5B6B76;
+  --line: #D6DEE3;
+  --accent: #0A6B63;
+  --accent-ink: #FFFFFF;
+  --soft: #E0F0EE;
+  --mark: #F4C430;
+  --mark-ink: #3A2E00;
+  --danger: #B3261E;
+  --danger-soft: #FBE9E7;
+  --shadow: 0 1px 2px rgba(18, 32, 42, .06), 0 4px 14px rgba(18, 32, 42, .06);
+  --display: "Bricolage Grotesque", "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --body: "Figtree", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --radius: 14px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0E161B;
+    --surface: #17222A;
+    --ink: #E7EEF2;
+    --muted: #93A4AF;
+    --line: #2A3842;
+    --accent: #46C2B5;
+    --accent-ink: #062421;
+    --soft: #13302E;
+    --mark: #F0C02E;
+    --mark-ink: #2B2200;
+    --danger: #FF8A80;
+    --danger-soft: #3A1E1C;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 14px rgba(0, 0, 0, .25);
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 400 16px/1.5 var(--body);
+  -webkit-font-smoothing: antialiased;
+}
+[hidden] { display: none !important; }
+h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; line-height: 1.15; }
+h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -.01em; }
+h2 { font-size: 1.2rem; font-weight: 700; }
+h3 { font-size: 1.02rem; font-weight: 600; }
+p { margin: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--mark); outline-offset: 2px; }
+
+.shell { max-width: 480px; margin: 0 auto; min-height: 100dvh; display: flex; flex-direction: column; }
+.topbar {
+  position: sticky; top: 0; z-index: 5;
+  padding: calc(env(safe-area-inset-top, 0px) + 14px) 16px 12px;
+  background: var(--bg); border-bottom: 1px solid var(--line);
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+}
+.brand { font: 700 1.15rem var(--display); letter-spacing: -.01em; }
+.brand i { display: inline-block; width: .55em; height: .55em; border-radius: 50%; background: var(--mark); margin-right: .4em; }
+.who { color: var(--muted); font-size: .85rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+main { flex: 1; padding: 20px 16px 110px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.lead { color: var(--muted); }
+.stack { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.between { justify-content: space-between; }
+.grow { flex: 1; min-width: 0; }
+
+.tabs {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 6;
+  background: var(--surface); border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.tabs div { max-width: 480px; margin: 0 auto; display: flex; }
+.tabs button {
+  flex: 1; border: 0; background: none; cursor: pointer;
+  padding: 12px 4px 11px; font-size: .82rem; font-weight: 600; color: var(--muted);
+  border-top: 3px solid transparent;
+}
+.tabs button[aria-current="page"] { color: var(--accent); border-top-color: var(--accent); }
+
+.card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0;
+}
+.notice { position: relative; padding-top: 22px; box-shadow: var(--shadow); border-color: transparent; }
+.notice::before {
+  content: ""; position: absolute; top: -6px; left: 18px; width: 13px; height: 13px; border-radius: 50%;
+  background: var(--mark); box-shadow: 0 2px 0 rgba(0, 0, 0, .18);
+}
+.notice .body { white-space: pre-wrap; overflow-wrap: anywhere; }
+.meta { color: var(--muted); font-size: .84rem; }
+.chip {
+  display: inline-block; font-size: .74rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 999px; background: var(--soft); color: var(--accent);
+}
+.chip.mark { background: var(--mark); color: var(--mark-ink); }
+.chip.off { background: var(--line); color: var(--muted); }
+.chip.bad { background: var(--danger-soft); color: var(--danger); }
+.amount { font: 700 2.1rem/1.1 var(--display); font-variant-numeric: tabular-nums; }
+.ref { font: 700 1.45rem/1.2 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .03em; overflow-wrap: anywhere; }
+.price { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+img.qr { width: 100%; max-width: 260px; align-self: center; background: #fff; padding: 8px; border-radius: 10px; border: 1px solid var(--line); }
+img.shot { max-width: 100%; max-height: 320px; align-self: center; border-radius: 10px; border: 1px solid var(--line); }
+.sheet img.shot { max-height: none; }
+.cat { font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-top: 6px; }
+
+.btn {
+  border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink);
+  padding: 10px 16px; border-radius: 10px; font-weight: 700; cursor: pointer; white-space: nowrap;
+}
+.btn.ghost { background: transparent; color: var(--accent); }
+.btn.quiet { background: transparent; border-color: var(--line); color: var(--ink); font-weight: 600; }
+.btn.danger { background: transparent; border-color: var(--danger); color: var(--danger); }
+.btn.small { padding: 7px 12px; font-size: .88rem; }
+.btn.wide { width: 100%; padding: 13px 16px; }
+.btn:disabled { opacity: .55; cursor: default; }
+.link { border: 0; background: none; color: var(--accent); font-weight: 700; cursor: pointer; padding: 4px 0; text-decoration: underline; text-underline-offset: 3px; }
+
+form { display: flex; flex-direction: column; gap: 14px; }
+label { display: flex; flex-direction: column; gap: 5px; font-size: .88rem; font-weight: 600; }
+label small { font-weight: 400; color: var(--muted); }
+input, select, textarea {
+  width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--surface); font-size: 1rem;
+}
+textarea { min-height: 110px; resize: vertical; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.error { background: var(--danger-soft); color: var(--danger); border-radius: 10px; padding: 10px 12px; font-size: .92rem; font-weight: 600; }
+.note { background: var(--soft); border-radius: 10px; padding: 10px 12px; font-size: .9rem; }
+.steps { font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+
+.seg { display: flex; background: var(--line); border-radius: 10px; padding: 3px; gap: 3px; }
+.seg button { flex: 1; border: 0; background: none; padding: 8px; border-radius: 8px; font-weight: 600; cursor: pointer; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); }
+
+dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; }
+dt { color: var(--muted); font-size: .88rem; }
+dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+
+.scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-size: .74rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+td.num { font-variant-numeric: tabular-nums; }
+
+.empty { text-align: center; color: var(--muted); padding: 28px 16px; border: 1px dashed var(--line); border-radius: var(--radius); display: flex; flex-direction: column; gap: 12px; align-items: center; }
+.sheet-back { position: fixed; inset: 0; z-index: 20; background: rgba(8, 14, 18, .55); display: flex; align-items: flex-end; justify-content: center; }
+.sheet {
+  background: var(--surface); width: 100%; max-width: 480px; border-radius: 18px 18px 0 0;
+  padding: 22px 18px calc(env(safe-area-inset-bottom, 0px) + 20px); display: flex; flex-direction: column; gap: 14px;
+  max-height: 92dvh; overflow-y: auto;
+}
+.toast {
+  position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 74px); transform: translateX(-50%);
+  background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-weight: 600; font-size: .9rem; z-index: 30;
+  max-width: calc(100% - 32px);
+}
+.center { min-height: 60dvh; display: flex; align-items: center; justify-content: center; color: var(--muted); }
+@media (max-width: 360px) { .two { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div id="app" class="shell"><div class="center">Loading…</div></div>
+<div id="overlay"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script>
+/* =====================================================================
+   SETTINGS: the only part you should need to edit by hand.
+   ===================================================================== */
+const CONFIG = {
+  SUPABASE_URL: "https://ugzsgqkidpairnvsjqdx.supabase.co",
+  SUPABASE_KEY: "sb_publishable_DMmDPbLperEMxd_yH28pMA_wD1jDhRb",   // publishable key only. Never the secret key.
+  APP_NAME: "Clubs",
+  // Leave empty while testing. Before launch, list the allowed endings,
+  // for example ["@student.monash.edu"].
+  ALLOWED_EMAIL_ENDINGS: [],
+  SCHOOLS: [
+    "School of Business",
+    "School of Engineering",
+    "School of Information Technology",
+    "School of Science",
+    "School of Arts and Social Sciences",
+    "School of Pharmacy",
+    "Jeffrey Cheah School of Medicine and Health Sciences"
+  ],
+  // Majors and minors offered in each school. Students pick from these lists.
+  // "minors" is optional: when it is left out, the minor list is the same as the majors.
+  // Students can always choose "Other" and type their own.
+  COURSES: {
+    "School of Business": {
+      majors: ["Accountancy", "Applied Economics", "Banking and Financial Management", "Business Analytics",
+        "Econometrics and Business Statistics", "International Business Management", "Management", "Strategic Marketing",
+        "Actuarial Analytics", "Digital Business"],
+      minors: ["Accountancy", "Applied Economics", "Banking and Financial Management", "Business Analytics",
+        "Econometrics and Business Statistics", "International Business Management", "Management", "Strategic Marketing",
+        "Fintech", "Digital Marketing", "Sustainability"]
+    },
+    "School of Engineering": {
+      majors: ["Biomedical Engineering", "Chemical Engineering", "Civil Engineering", "Electrical and Computer Systems Engineering",
+        "Materials Engineering", "Mechanical Engineering", "Robotics and Mechatronics Engineering", "Software Engineering"],
+      minors: []
+    },
+    "School of Information Technology": {
+      majors: ["Computer Science", "Data Science", "Artificial Intelligence"],
+      minors: []
+    },
+    "School of Science": {
+      majors: ["Applied Data Science", "Applied Microbiology", "Biotechnology", "Food Science and Technology",
+        "Genomics and Bioinformatics", "Medical Bioscience", "Medicinal Chemistry", "Psychology", "Tropical Environmental Biology"]
+    },
+    "School of Arts and Social Sciences": {
+      majors: ["Communication and Media Studies", "Digital Media and Communication", "Film, Television and Screen Studies",
+        "Gender Studies", "Global Studies", "Psychology"]
+    },
+    "School of Pharmacy": {
+      majors: ["Pharmacy", "Pharmaceutical Science"],
+      minors: []
+    },
+    "Jeffrey Cheah School of Medicine and Health Sciences": {
+      majors: ["Medicine", "Human Nutrition", "Psychology", "Psychology and Business"],
+      minors: []
+    }
+  },
+  CATEGORIES: ["Academic", "Career", "Culture", "Sports", "Arts", "Community", "Special interest"]
+};
+
+/* ===================================================================== */
+const app = document.getElementById("app");
+const overlay = document.getElementById("overlay");
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const when = (iso) => new Date(iso).toLocaleString("en-MY", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+const money = (n) => "RM " + (Number(n) % 1 === 0 ? Number(n).toFixed(0) : Number(n).toFixed(2));
+const day = (iso) => new Date(iso).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" });
+
+let sb = null;
+let currentUid;          // undefined until the first session check finishes
+const S = {};
+const emptyManage = (clubId = null) => ({ clubId, members: null, posts: null, error: "", qrFile: null, qrPreview: "", qrUrl: "", feeError: "" });
+function reset() {
+  Object.assign(S, {
+    phase: "loading", fatal: "",
+    authView: "login", draft: {}, authError: "", pendingEmail: "",
+    user: null, profile: null, isAdmin: false,
+    clubs: [], mine: new Map(), committee: [], feed: [], toCheck: {}, pay: null,
+    tab: "home", clubFilter: "all", clubSearch: "",
+    sheet: null, editing: false, formError: "",
+    manage: emptyManage(),
+    admin: { loaded: false, committee: [], counts: {}, students: null, open: null, error: "" }
+  });
+}
+reset();
+
+function friendly(err) {
+  const m = (err && (err.message || err.error_description)) || String(err || "Something went wrong.");
+  const code = err && err.code;
+  if (code === "23505" && /student_id/.test(m + (err.details || ""))) return "That student ID is already registered to another account.";
+  if (code === "23505" && /clubs_name/.test(m)) return "A club with that name already exists.";
+  if (code === "23505" && /club_committee/.test(m)) return "That student is already on this committee.";
+  if (code === "23505" && /memberships/.test(m)) return "You have already joined this club.";
+  if (code === "23514" && /major_or_minor/.test(m)) return "From Year 2 onwards, choose your major or a minor.";
+  if (/receipt_required/.test(m)) return "Add your payment screenshot first.";
+  if (/own_payment/.test(m)) return "Another committee member has to check your own payment.";
+  if (/mime type|exceeded the maximum|too large/i.test(m)) return "Use a JPG or PNG image under 5 MB.";
+  if (code === "42501" || /row-level security/i.test(m)) return "You don't have permission to do that.";
+  if (/Invalid login credentials/i.test(m)) return "Wrong email or password.";
+  if (/Email not confirmed/i.test(m)) return "Confirm your email first. Open the link we sent to your inbox, then log in.";
+  if (/not authorized/i.test(m) && /email/i.test(m)) return "The confirmation email could not be sent to this address. The project's email sender is still in test mode.";
+  if (/rate limit/i.test(m)) return "Too many emails were sent in the last hour. Wait a while and try again.";
+  if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return "Can't reach the server. Check your internet connection and try again.";
+  if (/Password should be/i.test(m)) return "Choose a longer password (at least 6 characters).";
+  return m;
+}
+
+let toastTimer;
+function toast(msg) {
+  clearTimeout(toastTimer);
+  document.querySelectorAll(".toast").forEach((t) => t.remove());
+  const el = document.createElement("div");
+  el.className = "toast"; el.setAttribute("role", "status"); el.textContent = msg;
+  document.body.appendChild(el);
+  toastTimer = setTimeout(() => el.remove(), 2800);
+}
+
+/* ---------------------------------------------------------------------
+   Images (payment screenshots and club QR codes are private files)
+   --------------------------------------------------------------------- */
+const imageCache = {};
+async function imageUrl(bucket, path) {
+  const key = bucket + "/" + path;
+  if (!imageCache[key]) {
+    const { data, error } = await sb.storage.from(bucket).download(path);
+    if (error) throw error;
+    imageCache[key] = URL.createObjectURL(data);
+  }
+  return imageCache[key];
+}
+// Make a photo or screenshot small enough to upload quickly.
+function shrinkImage(file, max, quality) {
+  return new Promise((resolve, reject) => {
+    const bad = () => reject(new Error("Couldn't read that image. Try a JPG or PNG screenshot."));
+    if (!file || !/^image\//.test(file.type)) { reject(new Error("Choose an image file (a screenshot or photo).")); return; }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const cv = document.createElement("canvas");
+      cv.width = Math.max(1, Math.round(img.width * scale)); cv.height = Math.max(1, Math.round(img.height * scale));
+      const ctx = cv.getContext("2d");
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cv.width, cv.height); ctx.drawImage(img, 0, 0, cv.width, cv.height);
+      URL.revokeObjectURL(url);
+      cv.toBlob((b) => (b ? resolve(b) : bad()), "image/jpeg", quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); bad(); };
+    img.src = url;
+  });
+}
+async function copyText(text, done) {
+  try { await navigator.clipboard.writeText(text); toast(done); }
+  catch (e) {
+    const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand && document.execCommand("copy"); ta.remove();
+    toast(ok ? done : "Couldn't copy. Try a different browser.");
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Loading data
+   --------------------------------------------------------------------- */
+const OTHER = "__other";
+function profileRow(src) {
+  const t = (v) => { const s = String(v ?? "").trim(); return s === "" ? null : s; };
+  const pick = (v, other) => (v === OTHER ? t(other) : t(v));      // "Other" uses what the student typed
+  return {
+    first_name: t(src.first_name), last_name: t(src.last_name), student_id: t(src.student_id),
+    phone: t(src.phone), year: Number(src.year) || null, school: t(src.school),
+    major: pick(src.major, src.major_other), minor: pick(src.minor, src.minor_other)
+  };
+}
+function checkProfile(p) {
+  if (!p.first_name || !p.last_name) return "Enter your first and last name.";
+  if (!p.student_id) return "Enter your Monash student ID.";
+  if (!p.year) return "Choose your year.";
+  if (!p.school) return "Choose your school.";
+  if (p.year > 1 && !p.major && !p.minor) return "From Year 2 onwards, choose your major or a minor.";
+  return "";
+}
+
+async function loadAccount() {
+  const uid = S.user.id;
+  const [p, a] = await Promise.all([
+    sb.from("students").select("*").eq("id", uid).maybeSingle(),
+    sb.from("admins").select("user_id").eq("user_id", uid).maybeSingle()
+  ]);
+  if (p.error) throw p.error;
+  if (a.error) throw a.error;
+  S.profile = p.data; S.isAdmin = !!a.data;
+
+  // First login after sign-up: create the student record from the sign-up answers.
+  if (!S.profile) {
+    const row = profileRow(S.user.user_metadata || {});
+    if (!checkProfile(row)) {
+      const ins = await sb.from("students").insert({ id: uid, email: S.user.email, ...row }).select().single();
+      if (ins.error) { S.draft = row; S.formError = friendly(ins.error); }
+      else S.profile = ins.data;
+    }
+  }
+  if (!S.profile) { S.phase = "profile"; return; }
+  await loadData();
+  S.phase = "main";
+}
+
+async function loadData() {
+  const uid = S.user.id;
+  const [c, m, k, f] = await Promise.all([
+    sb.from("clubs").select("*").order("name"),
+    sb.from("memberships").select("*").eq("student_id", uid),
+    sb.from("club_committee").select("club_id, role").eq("student_id", uid),
+    sb.from("announcements").select("id, club_id, title, body, created_at").order("created_at", { ascending: false }).limit(60)
+  ]);
+  for (const r of [c, m, k, f]) if (r.error) throw r.error;
+  S.clubs = c.data;
+  S.mine = new Map(m.data.map((r) => [r.club_id, r]));
+  S.committee = k.data;
+  const visible = new Set([...activeIds(), ...k.data.map((r) => r.club_id)]);
+  S.feed = f.data.filter((r) => visible.has(r.club_id));
+  S.toCheck = {};
+  if (k.data.length) {
+    const p = await sb.from("memberships").select("club_id").eq("status", "pending").in("club_id", k.data.map((r) => r.club_id));
+    if (p.error) throw p.error;
+    for (const r of p.data) S.toCheck[r.club_id] = (S.toCheck[r.club_id] || 0) + 1;
+  }
+}
+
+async function loadManage(clubId) {
+  S.manage = emptyManage(clubId);
+  render();
+  const club = S.clubs.find((c) => c.id === clubId) || {};
+  const [m, p, qr] = await Promise.all([
+    sb.from("memberships")
+      .select("*, students(first_name, last_name, student_id, email, phone, year, school, major, minor)")
+      .eq("club_id", clubId).order("joined_at"),
+    sb.from("announcements").select("id, title, body, created_at").eq("club_id", clubId).order("created_at", { ascending: false }),
+    club.pay_qr_path ? imageUrl("club-qr", club.pay_qr_path).catch(() => "") : ""
+  ]);
+  if (S.manage.clubId !== clubId) return;
+  if (m.error || p.error) S.manage.error = friendly(m.error || p.error);
+  S.manage.members = (m.data || []).filter((r) => r.students);
+  S.manage.posts = p.data || [];
+  S.manage.qrUrl = qr;
+  render();
+}
+
+async function loadAdmin() {
+  const [k, m, s] = await Promise.all([
+    sb.from("club_committee").select("club_id, role, student_id, students(first_name, last_name, email, student_id)"),
+    sb.from("memberships").select("club_id, status"),
+    sb.from("students").select("id", { count: "exact", head: true })
+  ]);
+  const err = k.error || m.error || s.error;
+  S.admin.error = err ? friendly(err) : "";
+  S.admin.committee = k.data || [];
+  S.admin.counts = {};
+  for (const r of m.data || []) { const c = (S.admin.counts[r.club_id] ||= { active: 0, pending: 0 }); if (r.status in c) c[r.status]++; }
+  S.admin.students = s.count ?? null;
+  S.admin.loaded = true;
+  render();
+}
+
+/* ---------------------------------------------------------------------
+   Screens
+   --------------------------------------------------------------------- */
+const clubName = (id) => (S.clubs.find((c) => c.id === id) || {}).name || "Club";
+const my = (id) => S.mine.get(id) || null;
+const canTakePayment = (c) => !(Number(c.fee) > 0) || !!c.pay_account_number || !!c.pay_qr_path;
+const activeIds = () => [...S.mine.values()].filter((r) => r.status === "active").map((r) => r.club_id);
+const isCommittee = (id) => S.committee.some((c) => c.club_id === id);
+const val = (k) => esc(S.draft[k] ?? "");
+
+// Options for the Major or Minor dropdown of one school.
+function courseOptions(kind, school, current, forceOther = false) {
+  const c = CONFIG.COURSES[school] || {};
+  const list = (kind === "minor" ? (c.minors || c.majors) : c.majors) || [];
+  const isOther = forceOther || (!!current && !list.includes(current));
+  const first = kind === "major" ? "Not decided yet" : "- (no minor)";
+  return { isOther, html: `<option value="">${first}</option>`
+    + list.map((o) => `<option ${current === o ? "selected" : ""}>${esc(o)}</option>`).join("")
+    + `<option value="${OTHER}" ${isOther ? "selected" : ""}>Other (type it in)</option>` };
+}
+function profileFields(d, withPhoneNote = true) {
+  const yr = Number(d.year) || 0;
+  const school = d.school || "";
+  const cur = (k) => (d[k] === OTHER ? (d[k + "_other"] || "").trim() : d[k]) || "";
+  const major = courseOptions("major", school, cur("major"), d.major === OTHER), minor = courseOptions("minor", school, cur("minor"), d.minor === OTHER);
+  const majorOther = major.isOther, minorOther = minor.isOther;
+  return `
+    <div class="two">
+      <label>Year
+        <select name="year" id="f-year" required>
+          <option value="">Choose</option>
+          ${[1, 2, 3, 4, 5].map((y) => `<option value="${y}" ${yr === y ? "selected" : ""}>Year ${y}</option>`).join("")}
+        </select>
+      </label>
+      <label>School
+        <select name="school" id="f-school" required>
+          <option value="">Choose</option>
+          ${CONFIG.SCHOOLS.map((s) => `<option ${school === s ? "selected" : ""}>${esc(s)}</option>`).join("")}
+          ${school && !CONFIG.SCHOOLS.includes(school) ? `<option selected>${esc(school)}</option>` : ""}
+        </select>
+      </label>
+    </div>
+    <label>Major or course <small>Choose your school first. Year 1 students can leave this as "Not decided yet".</small>
+      <select name="major" id="f-major">${major.html}</select>
+    </label>
+    <label id="f-major-other-wrap" ${majorOther ? "" : "hidden"}>Type your major
+      <input name="major_other" id="f-major-other" value="${majorOther ? esc(cur("major")) : ""}" autocomplete="off">
+    </label>
+    <label>Minor <small>Not everyone has one. Choose "-" if you don't.</small>
+      <select name="minor" id="f-minor">${minor.html}</select>
+    </label>
+    <label id="f-minor-other-wrap" ${minorOther ? "" : "hidden"}>Type your minor
+      <input name="minor_other" id="f-minor-other" value="${minorOther ? esc(cur("minor")) : ""}" autocomplete="off">
+    </label>
+    <label>Phone number <small>Optional. ${withPhoneNote ? "Shared only with the committees of clubs you join." : ""}</small>
+      <input name="phone" id="f-phone" type="tel" value="${esc(d.phone ?? "")}" placeholder="e.g. 012-345 6789" autocomplete="tel">
+    </label>`;
+}
+
+function viewAuth() {
+  const err = S.authError ? `<div class="error" role="alert">${esc(S.authError)}</div>` : "";
+  if (S.authView === "check") {
+    return `<main>
+      <h1>Check your email</h1>
+      <p class="lead">We sent a confirmation link to <strong>${esc(S.pendingEmail)}</strong>. Open it, then come back here and log in.</p>
+      <button class="btn wide" data-act="auth-view" data-view="login">Go to log in</button>
+    </main>`;
+  }
+  if (S.authView === "signup1") {
+    return `<main>
+      <div class="stack"><span class="steps">Step 1 of 2</span><h1>Create your account</h1>
+      <p class="lead">One account for every club you join.</p></div>
+      ${err}
+      <form data-form="signup1" novalidate>
+        <div class="two">
+          <label>First name<input name="first_name" id="f-first" value="${val("first_name")}" required autocomplete="given-name"></label>
+          <label>Last name<input name="last_name" id="f-last" value="${val("last_name")}" required autocomplete="family-name"></label>
+        </div>
+        <label>Monash student ID <small>The number on your student card, not your IC number.</small>
+          <input name="student_id" id="f-sid" value="${val("student_id")}" required inputmode="numeric" autocomplete="off">
+        </label>
+        <label>Student email<input name="email" id="f-email" type="email" value="${val("email")}" required autocomplete="email"></label>
+        <label>Password <small>At least 8 characters.</small>
+          <input name="password" id="f-pass" type="password" required minlength="8" autocomplete="new-password">
+        </label>
+        <button class="btn wide">Next</button>
+      </form>
+      <p class="meta">Already have an account? <button class="link" data-act="auth-view" data-view="login">Log in</button></p>
+    </main>`;
+  }
+  if (S.authView === "signup2") {
+    return `<main>
+      <div class="stack"><span class="steps">Step 2 of 2</span><h1>What do you study?</h1>
+      <p class="lead">Clubs use this to know who their members are.</p></div>
+      ${err}
+      <form data-form="signup2" novalidate>
+        ${profileFields(S.draft)}
+        <button class="btn wide">Create account</button>
+        <button type="button" class="btn quiet wide" data-act="auth-view" data-view="signup1">Back</button>
+      </form>
+    </main>`;
+  }
+  return `<main>
+    <div class="stack"><h1>Log in</h1><p class="lead">Join clubs and get their announcements in one place.</p></div>
+    ${err}
+    <form data-form="login" novalidate>
+      <label>Student email<input name="email" id="l-email" type="email" required autocomplete="email" value="${val("email")}"></label>
+      <label>Password<input name="password" id="l-pass" type="password" required autocomplete="current-password"></label>
+      <button class="btn wide">Log in</button>
+    </form>
+    <p class="meta">New here? <button class="link" data-act="auth-view" data-view="signup1">Create an account</button></p>
+  </main>`;
+}
+
+function viewProfileSetup() {
+  const d = S.draft;
+  return `<main>
+    <div class="stack"><h1>Finish your profile</h1><p class="lead">We need a few details before you can join clubs.</p></div>
+    ${S.formError ? `<div class="error" role="alert">${esc(S.formError)}</div>` : ""}
+    <form data-form="profile-create" novalidate>
+      <div class="two">
+        <label>First name<input name="first_name" id="p-first" value="${esc(d.first_name ?? "")}" required></label>
+        <label>Last name<input name="last_name" id="p-last" value="${esc(d.last_name ?? "")}" required></label>
+      </div>
+      <label>Monash student ID <small>The number on your student card, not your IC number.</small>
+        <input name="student_id" id="p-sid" value="${esc(d.student_id ?? "")}" required inputmode="numeric">
+      </label>
+      ${profileFields(d)}
+      <button class="btn wide">Save</button>
+      <button type="button" class="btn quiet wide" data-act="logout">Log out</button>
+    </form>
+  </main>`;
+}
+
+function viewHome() {
+  const p = S.profile;
+  if (!S.feed.length) {
+    const joined = activeIds().length > 0;
+    const waiting = [...S.mine.values()].some((r) => r.status === "pending");
+    const msg = joined ? "No announcements yet. Posts from your clubs will be pinned here."
+      : waiting ? "Your payment is being checked by the club. Its announcements will be pinned here once you're approved."
+      : "You haven't joined a club yet. Join one and its announcements will be pinned here.";
+    return `<h1>Hi, ${esc(p.first_name)}</h1>
+      <div class="empty">
+        <p>${msg}</p>
+        ${joined || waiting ? "" : `<button class="btn" data-act="tab" data-tab="clubs">Browse clubs</button>`}
+      </div>`;
+  }
+  return `<div class="stack"><h1>Hi, ${esc(p.first_name)}</h1><p class="lead">Latest from your clubs.</p></div>
+    <div class="stack" style="gap:20px">
+      ${S.feed.map((a) => `<article class="card notice">
+        <div class="row between"><span class="chip">${esc(clubName(a.club_id))}</span><span class="meta">${when(a.created_at)}</span></div>
+        <h3>${esc(a.title)}</h3>
+        <p class="body">${esc(a.body)}</p>
+      </article>`).join("")}
+    </div>`;
+}
+
+function clubListHtml() {
+  const q = S.clubSearch.trim().toLowerCase();
+  let list = S.clubs.filter((c) => c.is_active || S.mine.has(c.id));
+  if (S.clubFilter === "mine") list = list.filter((c) => S.mine.has(c.id));
+  if (q) list = list.filter((c) => (c.name + " " + (c.description || "") + " " + (c.category || "")).toLowerCase().includes(q));
+  if (!list.length) {
+    const msg = S.clubs.length === 0 ? "No clubs have been added yet."
+      : S.clubFilter === "mine" && !q ? "You haven't joined any clubs yet."
+      : "No clubs match that search.";
+    return `<div class="empty"><p>${msg}</p></div>`;
+  }
+  const groups = {};
+  for (const c of list) (groups[c.category || "Other"] ||= []).push(c);
+  return Object.keys(groups).sort().map((g) => `
+    <div class="stack">
+      <div class="cat">${esc(g)}</div>
+      ${groups[g].map((c) => {
+        const m = my(c.id); const st = m ? m.status : ""; const fee = Number(c.fee) || 0;
+        const chip = st === "active" ? `<span class="chip mark">Joined</span>`
+          : st === "pending" ? `<span class="chip">Being checked</span>`
+          : st === "rejected" ? `<span class="chip bad">Not accepted</span>` : "";
+        const buttons = st === "active" ? `<button class="btn quiet small" data-act="ask-leave" data-club="${c.id}">Leave</button>`
+          : st === "pending" ? `<button class="btn quiet small" data-act="ask-leave" data-club="${c.id}">Cancel request</button>`
+          : st === "rejected" ? `<button class="btn small" data-act="ask-join" data-club="${c.id}">Try again</button>
+              <button class="btn quiet small" data-act="ask-leave" data-club="${c.id}">Remove</button>`
+          : !canTakePayment(c) ? `<button class="btn small" disabled>Not open yet</button>`
+          : `<button class="btn small" data-act="ask-join" data-club="${c.id}">${fee ? "Join · " + money(fee) : "Join"}</button>`;
+        return `<div class="card">
+          <div class="row between">
+            <h3 class="grow">${esc(c.name)}</h3>
+            ${chip}
+          </div>
+          ${c.description ? `<p class="meta">${esc(c.description)}</p>` : ""}
+          <p class="meta">${st === "active" && m.paid_amount != null
+            ? `Paid ${money(m.paid_amount)}${m.checked_at ? " · approved " + day(m.checked_at) : ""}${m.pay_ref ? " · ref " + esc(m.pay_ref) : ""}`
+            : fee ? "Membership fee " + money(fee) : "Free to join"}</p>
+          ${!st && !canTakePayment(c) ? `<p class="meta">Joining opens once the club adds its payment details.</p>` : ""}
+          ${st === "pending" ? `<p class="note">Your payment screenshot is with the committee. You become a member once they have checked it.${m.pay_ref ? " Your reference is " + esc(m.pay_ref) + "." : ""}</p>` : ""}
+          ${st === "rejected" ? `<div class="error">Your payment was not accepted${m.reject_reason ? ": " + esc(m.reject_reason) : "."}</div>` : ""}
+          <div class="row">
+            ${buttons}
+            ${isCommittee(c.id) ? `<button class="btn ghost small" data-act="manage" data-club="${c.id}">Manage</button>` : ""}
+          </div>
+        </div>`;
+      }).join("")}
+    </div>`).join("");
+}
+
+function viewPay() {
+  const p = S.pay;
+  const c = S.clubs.find((x) => x.id === p.clubId);
+  const row = my(c.id);
+  const hasBank = !!c.pay_account_number, hasQr = !!c.pay_qr_path;
+  const head = `<button class="link" style="align-self:flex-start" data-act="pay-back">Back to clubs</button>
+    <div class="stack"><h1>Join ${esc(c.name)}</h1>
+      <p class="lead">Pay the membership fee in your banking app, then upload a screenshot. You become a member once the committee has checked it.</p></div>`;
+  if (!hasBank && !hasQr) {
+    return `${head}<div class="error" role="alert">This club hasn't added its payment details yet. Ask the committee to add them, then try again.</div>`;
+  }
+  return `${head}
+    ${row && row.status === "rejected" && row.reject_reason ? `<div class="error">Last time: ${esc(row.reject_reason)}</div>` : ""}
+    <div class="card"><span class="meta">Membership fee</span><div class="amount">${money(c.fee)}</div></div>
+    <div class="card"><span class="meta">Payment reference</span>
+      ${p.ref ? `<div class="ref" id="pay-ref">${esc(p.ref)}</div>
+          <p class="meta">Type this in the reference box of your transfer. The club uses it to find your payment in its bank account.</p>
+          <button class="btn ghost small" style="align-self:flex-start" data-act="copy" data-text="${esc(p.ref)}">Copy reference</button>`
+        : p.refLoading ? `<p class="meta">Loading…</p>`
+        : `<p>Put your student ID (${esc(S.profile.student_id)}) in the reference box of your transfer so the club can match it.</p>`}
+    </div>
+    ${hasQr ? `<div class="card"><h3>Scan to pay</h3>
+      ${p.qrUrl ? `<img class="qr" src="${p.qrUrl}" alt="Payment QR code for ${esc(c.name)}">`
+        : `<p class="meta">${p.qrFailed ? "The QR code couldn't be loaded. Use the bank details or ask the committee." : "Loading QR code…"}</p>`}
+    </div>` : ""}
+    ${hasBank ? `<div class="card"><h3>${hasQr ? "Or transfer to" : "Transfer to"}</h3>
+      <dl><dt>Bank</dt><dd>${esc(c.pay_bank || "")}</dd>
+        <dt>Account name</dt><dd>${esc(c.pay_account_name || "")}</dd>
+        <dt>Account number</dt><dd style="font-variant-numeric:tabular-nums">${esc(c.pay_account_number)}</dd></dl>
+      <button class="btn ghost small" style="align-self:flex-start" data-act="copy" data-text="${esc(c.pay_account_number)}">Copy account number</button>
+    </div>` : ""}
+    ${c.pay_note ? `<p class="note">${esc(c.pay_note)}</p>` : ""}
+    <form data-form="pay" novalidate>
+      <label>Payment screenshot <small>The page your bank shows after the transfer goes through.</small>
+        <input type="file" id="pay-file" accept="image/*"></label>
+      <div id="pay-preview" class="stack">${p.preview ? `<img class="shot" src="${p.preview}" alt="Your payment screenshot">` : ""}</div>
+      <div id="pay-error">${p.error ? `<div class="error" role="alert">${esc(p.error)}</div>` : ""}</div>
+      <p class="note">The club's committee will see this screenshot and your name, student ID, year, school, major, minor, email and phone number.</p>
+      <button class="btn wide">Send for checking</button>
+    </form>`;
+}
+
+function viewClubs() {
+  return `<h1>Clubs</h1>
+    <div class="seg" role="group" aria-label="Which clubs to show">
+      <button data-act="club-filter" data-filter="all" aria-pressed="${S.clubFilter === "all"}">All clubs</button>
+      <button data-act="club-filter" data-filter="mine" aria-pressed="${S.clubFilter === "mine"}">My clubs (${S.mine.size})</button>
+    </div>
+    <input id="club-search" type="search" placeholder="Search clubs" aria-label="Search clubs" value="${esc(S.clubSearch)}">
+    <div id="club-list" class="stack" style="gap:18px">${clubListHtml()}</div>`;
+}
+
+function viewManage() {
+  const mine = S.committee.map((c) => c.club_id);
+  const id = S.manage.clubId;
+  if (id == null) {
+    return `<h1>Manage</h1><p class="lead">Clubs where you are on the committee.</p>
+      <div class="stack">${mine.map((cid) => `<button class="card" style="text-align:left;cursor:pointer" data-act="manage" data-club="${cid}">
+        <h3>${esc(clubName(cid))}</h3><span class="meta">${esc((S.committee.find((c) => c.club_id === cid) || {}).role || "Committee")}${S.toCheck[cid] ? ` · ${S.toCheck[cid]} payment${S.toCheck[cid] === 1 ? "" : "s"} to check` : ""}</span>
+      </button>`).join("")}</div>`;
+  }
+  const m = S.manage;
+  const club = S.clubs.find((c) => c.id === id) || {};
+  const fee = Number(club.fee) || 0;
+  const canPost = isCommittee(id);
+  const canEdit = canPost || S.isAdmin;
+  const back = mine.length > 1 || !canPost;
+  const pending = (m.members || []).filter((r) => r.status === "pending");
+  const active = (m.members || []).filter((r) => r.status === "active");
+  const full = (s) => esc(s.first_name) + " " + esc(s.last_name);
+
+  const payments = m.members === null || (!pending.length && !fee) ? "" : `<div class="stack">
+      <h2>Payments to check (${pending.length})</h2>
+      ${pending.length ? `<p class="meta">Before approving, find each reference and amount in the club's bank account. A screenshot on its own can be edited.</p>` : ""}
+      ${pending.length ? pending.map((r) => `<div class="card">
+        <div class="row between"><h3 class="grow">${full(r.students)}</h3><span class="price">${money(r.paid_amount || 0)}</span></div>
+        <p class="meta">Student ID ${esc(r.students.student_id)} · sent ${when(r.submitted_at || r.joined_at)}</p>
+        ${r.pay_ref ? `<p>Reference <strong style="font-family:ui-monospace,Menlo,Consolas,monospace">${esc(r.pay_ref)}</strong></p>` : ""}
+        <div class="row">
+          <button class="btn quiet small" data-act="view-receipt" data-student="${esc(r.student_id)}">View screenshot</button>
+          ${canEdit ? `<button class="btn small" data-act="approve" data-student="${esc(r.student_id)}">Approve</button>
+          <button class="btn danger small" data-act="ask-reject" data-student="${esc(r.student_id)}">Not accepted</button>` : ""}
+        </div>
+      </div>`).join("") : `<p class="meta">Nothing waiting. New payments appear here as students send them.</p>`}
+    </div>`;
+
+  const members = m.members === null ? `<div class="meta">Loading members…</div>` : !active.length
+    ? `<div class="empty"><p>${fee ? "No members yet. Students appear here once their payment is approved." : "No members yet. Students appear here as soon as they tap Join."}</p></div>`
+    : `<div class="scroll"><table>
+        <thead><tr><th>Name</th><th>Student ID</th><th>Year</th><th>School</th><th>Major</th><th>Minor</th><th>Email</th><th>Phone</th><th>Joined</th><th>Paid</th><th>Reference</th></tr></thead>
+        <tbody>${active.map((r) => { const s = r.students; return `<tr>
+          <td>${full(s)}</td><td class="num">${esc(s.student_id)}</td><td class="num">${esc(s.year)}</td>
+          <td>${esc(s.school)}</td><td>${esc(s.major || "")}</td><td>${esc(s.minor || "")}</td>
+          <td>${esc(s.email)}</td><td class="num">${esc(s.phone || "")}</td><td>${day(r.joined_at)}</td>
+          <td class="num">${r.paid_amount != null ? money(r.paid_amount) : ""}</td><td class="num">${esc(r.pay_ref || "")}</td></tr>`; }).join("")}
+        </tbody></table></div>`;
+
+  const posts = m.posts === null ? "" : !m.posts.length ? `<p class="meta">Nothing posted yet.</p>`
+    : m.posts.map((a) => `<div class="card">
+        <div class="row between"><h3 class="grow">${esc(a.title)}</h3><span class="meta">${when(a.created_at)}</span></div>
+        <p class="meta" style="white-space:pre-wrap">${esc(a.body)}</p>
+        ${canEdit ? `<div class="row"><button class="btn danger small" data-act="ask-delete-post" data-id="${a.id}">Delete</button></div>` : ""}
+      </div>`).join("");
+
+  const qrShown = m.qrPreview || m.qrUrl;
+  const feeForm = !canEdit || m.members === null ? "" : `<div class="stack">
+      <h2>Membership fee</h2>
+      <form data-form="club-fee" novalidate class="card">
+        <label>Fee in RM <small>What a student pays to join. Use 0 only if joining is free.</small>
+          <input name="fee" id="fee-amount" type="number" min="0" step="0.01" inputmode="decimal" value="${fee}"></label>
+        <label>Payment QR code <small>A screenshot of the club's DuitNow QR.</small>
+          <input type="file" id="qr-file" accept="image/*"></label>
+        <div id="qr-preview" class="stack">${qrShown ? `<img class="qr" src="${qrShown}" alt="The club's payment QR code">` : ""}</div>
+        <label>Bank<input name="pay_bank" id="fee-bank" value="${esc(club.pay_bank || "")}" placeholder="e.g. Maybank" autocomplete="off"></label>
+        <label>Account name<input name="pay_account_name" id="fee-name" value="${esc(club.pay_account_name || "")}" autocomplete="off"></label>
+        <label>Account number<input name="pay_account_number" id="fee-number" value="${esc(club.pay_account_number || "")}" inputmode="numeric" autocomplete="off"></label>
+        <label>Note to students <small>Optional.</small>
+          <input name="pay_note" id="fee-note" value="${esc(club.pay_note || "")}" placeholder="e.g. Covers the whole academic year." autocomplete="off"></label>
+        <div id="fee-error">${m.feeError ? `<div class="error" role="alert">${esc(m.feeError)}</div>` : ""}</div>
+        <button class="btn" style="align-self:flex-start">Save fee details</button>
+      </form>
+    </div>`;
+
+  return `
+    ${back ? `<button class="link" style="align-self:flex-start" data-act="${canPost ? "manage-back" : "tab"}" data-tab="admin">Back</button>` : ""}
+    <div class="stack"><h1>${esc(clubName(id))}</h1><p class="lead">${canPost ? "Your members, payments and announcements." : "Members, payments and announcements."}</p></div>
+    ${m.error ? `<div class="error" role="alert">${esc(m.error)}</div>` : ""}
+    ${payments}
+    <div class="stack">
+      <div class="row between"><h2>Members${m.members ? ` (${active.length})` : ""}</h2>
+        ${active.length ? `<button class="btn ghost small" data-act="copy-members">Copy for Google Sheets</button>` : ""}</div>
+      ${members}
+    </div>
+    ${canPost ? `<div class="stack">
+      <h2>Post an announcement</h2>
+      <form data-form="post" novalidate class="card">
+        <label>Title<input name="title" id="a-title" required maxlength="120" placeholder="e.g. Annual general meeting"></label>
+        <label>Message<textarea name="body" id="a-body" required placeholder="What, when, where, and how it helps your members."></textarea></label>
+        <button class="btn">Post to members</button>
+      </form>
+    </div>` : ""}
+    <div class="stack"><h2>Posted</h2>${posts}</div>
+    ${feeForm}`;
+}
+
+function viewAdmin() {
+  const a = S.admin;
+  if (!a.loaded) return `<h1>Admin</h1><div class="meta">Loading…</div>`;
+  const clubs = S.clubs.map((c) => {
+    const com = a.committee.filter((k) => k.club_id === c.id);
+    const open = a.open === c.id;
+    const n = a.counts[c.id] || { active: 0, pending: 0 };
+    return `<div class="card">
+      <div class="row between">
+        <h3 class="grow">${esc(c.name)}</h3>
+        ${c.is_active ? "" : `<span class="chip off">Hidden</span>`}
+        ${canTakePayment(c) ? "" : `<span class="chip bad">Needs payment details</span>`}
+      </div>
+      <p class="meta">${esc(c.category || "No category")} · ${Number(c.fee) ? money(c.fee) : "Free"} · ${n.active} member${n.active === 1 ? "" : "s"}${n.pending ? ` · ${n.pending} to check` : ""} · ${com.length} on committee</p>
+      <div class="row">
+        <button class="btn ghost small" data-act="admin-open" data-club="${c.id}">${open ? "Close" : "Committee"}</button>
+        <button class="btn quiet small" data-act="manage" data-club="${c.id}">Members</button>
+        <button class="btn quiet small" data-act="toggle-club" data-club="${c.id}">${c.is_active ? "Hide" : "Show"}</button>
+      </div>
+      ${open ? `<div class="stack" style="border-top:1px solid var(--line);padding-top:12px">
+        ${com.length ? com.map((k) => `<div class="row between">
+            <div class="grow"><strong>${esc(k.students ? k.students.first_name + " " + k.students.last_name : "Student")}</strong>
+              <div class="meta">${esc(k.role || "Committee")}${k.students ? " · " + esc(k.students.email) : ""}</div></div>
+            <button class="btn danger small" data-act="remove-committee" data-club="${c.id}" data-student="${esc(k.student_id)}">Remove</button>
+          </div>`).join("") : `<p class="meta">No committee members yet.</p>`}
+        <form data-form="add-committee" data-club="${c.id}" novalidate>
+          <label>Student email or student ID <small>They must have signed up first.</small>
+            <input name="who" id="k-who-${c.id}" required autocomplete="off"></label>
+          <label>Role<input name="role" id="k-role-${c.id}" placeholder="e.g. President" autocomplete="off"></label>
+          <button class="btn small" style="align-self:flex-start">Add to committee</button>
+        </form>
+      </div>` : ""}
+    </div>`;
+  }).join("");
+  return `<div class="stack"><h1>Admin</h1>
+      <p class="lead">${a.students ?? "–"} student${a.students === 1 ? "" : "s"} signed up · ${S.clubs.length} club${S.clubs.length === 1 ? "" : "s"}</p></div>
+    ${a.error ? `<div class="error" role="alert">${esc(a.error)}</div>` : ""}
+    <div class="stack">
+      <h2>Add a club</h2>
+      <form data-form="add-club" novalidate class="card">
+        <label>Club name<input name="name" id="c-name" required maxlength="80"></label>
+        <label>Category<input name="category" id="c-cat" list="cats" placeholder="e.g. Career" autocomplete="off"></label>
+        <datalist id="cats">${CONFIG.CATEGORIES.map((c) => `<option value="${esc(c)}">`).join("")}</datalist>
+        <label>What it does<textarea name="description" id="c-desc" style="min-height:70px" maxlength="400"></textarea></label>
+        <label>Membership fee in RM <small>What a student pays to join. Type 0 only if this club is free.</small>
+          <input name="fee" id="c-fee" type="number" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 20"></label>
+        <button class="btn" style="align-self:flex-start">Add club</button>
+      </form>
+    </div>
+    <div class="stack"><h2>Clubs</h2>${clubs || `<div class="empty"><p>No clubs yet. Add the first one above.</p></div>`}</div>`;
+}
+
+function viewProfile() {
+  const p = S.profile;
+  if (S.editing) {
+    return `<h1>Edit your details</h1>
+      ${S.formError ? `<div class="error" role="alert">${esc(S.formError)}</div>` : ""}
+      <form data-form="profile-update" novalidate>
+        <div class="two">
+          <label>First name<input name="first_name" id="e-first" value="${esc(p.first_name)}" required></label>
+          <label>Last name<input name="last_name" id="e-last" value="${esc(p.last_name)}" required></label>
+        </div>
+        <label>Monash student ID<input name="student_id" id="e-sid" value="${esc(p.student_id)}" required inputmode="numeric"></label>
+        ${profileFields(p)}
+        <button class="btn wide">Save changes</button>
+        <button type="button" class="btn quiet wide" data-act="edit-cancel">Cancel</button>
+      </form>`;
+  }
+  return `<div class="row between"><h1>${esc(p.first_name)} ${esc(p.last_name)}</h1>${S.isAdmin ? `<span class="chip mark">Admin</span>` : ""}</div>
+    <div class="card"><dl>
+      <dt>Student ID</dt><dd>${esc(p.student_id)}</dd>
+      <dt>Email</dt><dd>${esc(p.email)}</dd>
+      <dt>Year</dt><dd>Year ${esc(p.year)}</dd>
+      <dt>School</dt><dd>${esc(p.school)}</dd>
+      <dt>Major</dt><dd>${esc(p.major || "Not decided yet")}</dd>
+      <dt>Minor</dt><dd>${esc(p.minor || "-")}</dd>
+      <dt>Phone</dt><dd>${esc(p.phone || "Not set")}</dd>
+    </dl></div>
+    <p class="meta">Update this once and every club you've joined sees the change. Only the committees of clubs you join can see these details.</p>
+    <button class="btn ghost wide" data-act="edit">Edit details</button>
+    <button class="btn quiet wide" data-act="logout">Log out</button>`;
+}
+
+function viewSheet() {
+  const s = S.sheet;
+  if (!s) return "";
+  const err = s.error ? `<div class="error" role="alert">${esc(s.error)}</div>` : "";
+  let body = "", close = "Cancel";
+  if (s.type === "join") {
+    body = `<h2>Join ${esc(clubName(s.clubId))}?</h2>
+      <p class="note">The club's committee will see your name, student ID, year, school, major, minor, email and phone number.</p>
+      ${err}
+      <button class="btn wide" data-act="join" data-club="${s.clubId}">Join club</button>`;
+  } else if (s.type === "leave") {
+    const st = (my(s.clubId) || {}).status;
+    body = st === "pending" ? `<h2>Cancel your request to join ${esc(clubName(s.clubId))}?</h2>
+        <p class="lead">If you have already paid, ask the club's committee about a refund.</p>
+        ${err}<button class="btn danger wide" data-act="leave" data-club="${s.clubId}">Cancel request</button>`
+      : st === "rejected" ? `<h2>Remove ${esc(clubName(s.clubId))} from your clubs?</h2>
+        <p class="lead">You can join again later.</p>
+        ${err}<button class="btn danger wide" data-act="leave" data-club="${s.clubId}">Remove</button>`
+      : `<h2>Leave ${esc(clubName(s.clubId))}?</h2>
+        <p class="lead">You'll stop getting its announcements and the committee will no longer see your details.${Number((S.clubs.find((c) => c.id === s.clubId) || {}).fee) ? " Joining again means paying the fee again." : ""}</p>
+        ${err}<button class="btn danger wide" data-act="leave" data-club="${s.clubId}">Leave club</button>`;
+    if (st === "pending") close = "Keep my request";
+  } else if (s.type === "delete-post") {
+    body = `<h2>Delete this announcement?</h2>
+      <p class="lead">Members will no longer see it.</p>
+      ${err}
+      <button class="btn danger wide" data-act="delete-post" data-id="${s.id}">Delete</button>`;
+  } else if (s.type === "receipt") {
+    close = "Close";
+    body = `<h2>${esc(s.name)}</h2>
+      ${s.url ? `<img class="shot" src="${s.url}" alt="Payment screenshot from ${esc(s.name)}">`
+        : `<p class="meta">${s.failed ? "The screenshot couldn't be loaded." : "Loading screenshot…"}</p>`}`;
+  } else if (s.type === "reject") {
+    body = `<h2>Mark ${esc(s.name)}'s payment as not accepted?</h2>
+      <form data-form="reject" data-student="${esc(s.student)}" novalidate>
+        <label>Reason shown to the student
+          <input name="reason" id="reject-reason" maxlength="200" placeholder="e.g. The amount was RM 10 short." autocomplete="off"></label>
+        ${err}
+        <button class="btn danger wide">Mark as not accepted</button>
+      </form>`;
+  }
+  return `<div class="sheet-back" data-act="sheet-close"><div class="sheet" role="dialog" aria-modal="true">
+    ${body}<button class="btn quiet wide" data-act="sheet-close">${close}</button></div></div>`;
+}
+function renderSheet() { overlay.innerHTML = viewSheet(); }
+
+function render() {
+  const brand = `<span class="brand"><i></i>${esc(CONFIG.APP_NAME)}</span>`;
+  if (S.phase === "loading") { app.innerHTML = `<header class="topbar">${brand}</header><div class="center">Loading…</div>`; overlay.innerHTML = ""; return; }
+  if (S.phase === "fatal") {
+    app.innerHTML = `<header class="topbar">${brand}</header><main><h1>Something went wrong</h1>
+      <div class="error" role="alert">${esc(S.fatal)}</div>
+      <button class="btn wide" data-act="reload">Try again</button>
+      ${S.user ? `<button class="btn quiet wide" data-act="logout">Log out</button>` : ""}</main>`;
+    overlay.innerHTML = ""; return;
+  }
+  if (S.phase === "auth") { app.innerHTML = `<header class="topbar">${brand}</header>${viewAuth()}`; overlay.innerHTML = ""; return; }
+  if (S.phase === "profile") { app.innerHTML = `<header class="topbar">${brand}</header>${viewProfileSetup()}`; overlay.innerHTML = ""; return; }
+
+  const tabs = [["home", "Home"], ["clubs", "Clubs"]];
+  const waiting = Object.values(S.toCheck).reduce((a, b) => a + b, 0);
+  if (S.committee.length) tabs.push(["manage", waiting ? `Manage (${waiting})` : "Manage"]);
+  if (S.isAdmin) tabs.push(["admin", "Admin"]);
+  tabs.push(["profile", "Profile"]);
+  const view = { home: viewHome, clubs: S.pay ? viewPay : viewClubs, manage: viewManage, admin: viewAdmin, profile: viewProfile }[S.tab]();
+  app.innerHTML = `<header class="topbar">${brand}<span class="who">${esc(S.profile.email)}</span></header>
+    <main>${view}</main>
+    <nav class="tabs" aria-label="Sections"><div>${tabs.map(([k, l]) =>
+      `<button data-act="tab" data-tab="${k}" ${S.tab === k ? 'aria-current="page"' : ""}>${l}</button>`).join("")}</div></nav>`;
+  overlay.innerHTML = viewSheet();
+}
+
+/* ---------------------------------------------------------------------
+   Actions
+   --------------------------------------------------------------------- */
+async function busy(btn, fn) {
+  const label = btn ? btn.textContent : "";
+  if (btn) { btn.disabled = true; btn.textContent = "Working…"; }
+  try { await fn(); }
+  finally { if (btn && btn.isConnected) { btn.disabled = false; btn.textContent = label; } }
+}
+async function openPay(clubId) {
+  const c = S.clubs.find((x) => x.id === clubId);
+  const pay = { clubId, file: null, preview: "", error: "", qrUrl: "", qrFailed: false, ref: "", refLoading: true };
+  S.pay = pay; S.sheet = null; render(); window.scrollTo(0, 0);
+  const show = () => { if (S.pay === pay) render(); };
+  const getRef = sb.rpc("payment_reference", { club: clubId })
+    .then((r) => { pay.ref = (!r.error && typeof r.data === "string" && r.data) || ""; }, () => {})
+    .then(() => { pay.refLoading = false; show(); });
+  const getQr = !c.pay_qr_path ? null
+    : imageUrl("club-qr", c.pay_qr_path).then((url) => { pay.qrUrl = url; }, () => { pay.qrFailed = true; }).then(show);
+  await Promise.all([getRef, getQr]);
+}
+function goTab(tab) {
+  S.tab = tab; S.editing = false; S.formError = ""; S.pay = null;
+  if (tab === "manage") {
+    const mine = S.committee.map((c) => c.club_id);
+    if (mine.length === 1) { loadManage(mine[0]); return; }
+    S.manage = emptyManage();
+  }
+  if (tab === "admin") { render(); loadData().then(loadAdmin).catch((e) => toast(friendly(e))); return; }
+  render(); window.scrollTo(0, 0);
+  // Pick up anything that changed since the page was opened (new clubs, fees, announcements).
+  if (tab === "home" || tab === "clubs") {
+    loadData().then(() => {
+      const typing = ["INPUT", "TEXTAREA", "SELECT"].includes((document.activeElement || {}).tagName);
+      if (S.tab === tab && !S.sheet && !S.pay && !typing) render();
+    }).catch(() => {});
+  }
+}
+
+const actions = {
+  "tab": (d) => goTab(d.tab),
+  "reload": () => location.reload(),
+  "auth-view": (d) => { S.authView = d.view; S.authError = ""; render(); },
+  "logout": async (d, btn) => busy(btn, async () => { await sb.auth.signOut(); }),
+  "club-filter": (d) => { S.clubFilter = d.filter; render(); },
+  "ask-join": (d) => {
+    const id = Number(d.club);
+    const c = S.clubs.find((x) => x.id === id);
+    if (Number(c.fee) > 0) return openPay(id);          // clubs with a fee go to the payment page
+    S.sheet = { type: "join", clubId: id }; renderSheet();
+  },
+  "ask-leave": (d) => { S.sheet = { type: "leave", clubId: Number(d.club) }; renderSheet(); },
+  "ask-delete-post": (d) => { S.sheet = { type: "delete-post", id: Number(d.id) }; renderSheet(); },
+  "sheet-close": () => { S.sheet = null; renderSheet(); },
+  "pay-back": () => { S.pay = null; render(); },
+  "copy": (d) => copyText(d.text, "Copied"),
+  "view-receipt": async (d) => {
+    const r = S.manage.members.find((x) => x.student_id === d.student);
+    const sheet = { type: "receipt", name: r.students.first_name + " " + r.students.last_name, url: "", failed: false };
+    S.sheet = sheet; renderSheet();
+    try { sheet.url = await imageUrl("receipts", r.receipt_path); } catch (e) { sheet.failed = true; }
+    if (S.sheet === sheet) renderSheet();
+  },
+  "ask-reject": (d) => {
+    const r = S.manage.members.find((x) => x.student_id === d.student);
+    S.sheet = { type: "reject", student: d.student, name: r.students.first_name }; renderSheet();
+  },
+  "approve": (d, btn) => busy(btn, async () => {
+    const clubId = S.manage.clubId;
+    const { error } = await sb.from("memberships").update({ status: "active" }).eq("club_id", clubId).eq("student_id", d.student);
+    if (error) { toast(friendly(error)); return; }
+    await loadData(); await loadManage(clubId); toast("Payment approved");
+  }),
+  "edit": () => { S.editing = true; S.formError = ""; render(); },
+  "edit-cancel": () => { S.editing = false; S.formError = ""; render(); },
+  "manage": (d) => { S.tab = "manage"; loadManage(Number(d.club)); window.scrollTo(0, 0); },
+  "manage-back": () => { S.manage = emptyManage(); render(); },
+  "admin-open": (d) => { const id = Number(d.club); S.admin.open = S.admin.open === id ? null : id; render(); },
+
+  "join": (d, btn) => busy(btn, async () => {
+    const clubId = Number(d.club);
+    if (my(clubId)) await sb.from("memberships").delete().eq("student_id", S.user.id).eq("club_id", clubId);
+    const { error } = await sb.from("memberships").insert({ student_id: S.user.id, club_id: clubId });
+    if (error && error.code !== "23505") { S.sheet.error = friendly(error); renderSheet(); return; }
+    S.sheet = null; await loadData(); render(); toast("Joined " + clubName(clubId));
+  }),
+  "leave": (d, btn) => busy(btn, async () => {
+    const clubId = Number(d.club);
+    const { error } = await sb.from("memberships").delete().eq("student_id", S.user.id).eq("club_id", clubId);
+    if (error) { S.sheet.error = friendly(error); renderSheet(); return; }
+    const was = (my(clubId) || {}).status;
+    S.sheet = null; await loadData(); render();
+    toast(was === "pending" ? "Request cancelled" : was === "rejected" ? "Removed" : "Left " + clubName(clubId));
+  }),
+  "delete-post": (d, btn) => busy(btn, async () => {
+    const { error } = await sb.from("announcements").delete().eq("id", Number(d.id));
+    if (error) { S.sheet.error = friendly(error); render(); return; }
+    S.sheet = null; await loadData(); await loadManage(S.manage.clubId); toast("Announcement deleted");
+  }),
+  "copy-members": () => {
+    const head = ["First name", "Last name", "Student ID", "Year", "School", "Major", "Minor", "Email", "Phone", "Joined", "Paid (RM)", "Reference", "Approved on"];
+    const clean = (v) => String(v ?? "").replace(/[\t\r\n]+/g, " ");
+    const rows = S.manage.members.filter((r) => r.status === "active").map((r) => { const s = r.students;
+      return [s.first_name, s.last_name, s.student_id, s.year, s.school, s.major, s.minor, s.email, s.phone, day(r.joined_at), r.paid_amount, r.pay_ref, r.checked_at ? day(r.checked_at) : ""].map(clean).join("\t"); });
+    return copyText([head.join("\t"), ...rows].join("\n"), "Copied. Paste it into a Google Sheet.");
+  },
+  "toggle-club": (d, btn) => busy(btn, async () => {
+    const c = S.clubs.find((x) => x.id === Number(d.club));
+    const { error } = await sb.from("clubs").update({ is_active: !c.is_active }).eq("id", c.id);
+    if (error) { toast(friendly(error)); return; }
+    await loadData(); render();
+  }),
+  "remove-committee": (d, btn) => busy(btn, async () => {
+    const { error } = await sb.from("club_committee").delete().eq("club_id", Number(d.club)).eq("student_id", d.student);
+    if (error) { toast(friendly(error)); return; }
+    await loadData(); await loadAdmin(); toast("Removed from committee");
+  })
+};
+
+const forms = {
+  "login": async (f) => {
+    S.draft = { email: f.email };
+    if (!f.email || !f.password) { S.authError = "Enter your email and password."; render(); return; }
+    const { error } = await sb.auth.signInWithPassword({ email: f.email.trim(), password: f.password });
+    if (error) { S.authError = friendly(error); render(); }
+  },
+  "signup1": async (f) => {
+    Object.assign(S.draft, f);
+    const email = (f.email || "").trim().toLowerCase();
+    let err = "";
+    if (!f.first_name.trim() || !f.last_name.trim()) err = "Enter your first and last name.";
+    else if (!f.student_id.trim()) err = "Enter your Monash student ID.";
+    else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) err = "Enter a valid email address.";
+    else if (CONFIG.ALLOWED_EMAIL_ENDINGS.length && !CONFIG.ALLOWED_EMAIL_ENDINGS.some((e) => email.endsWith(e.toLowerCase())))
+      err = "Use your student email (" + CONFIG.ALLOWED_EMAIL_ENDINGS.join(" or ") + ").";
+    else if ((f.password || "").length < 8) err = "Choose a password with at least 8 characters.";
+    S.authError = err; if (!err) S.authView = "signup2";
+    render();
+  },
+  "signup2": async (f) => {
+    Object.assign(S.draft, f);
+    const row = profileRow(S.draft);
+    const err = checkProfile(row);
+    if (err) { S.authError = err; render(); return; }
+    const email = S.draft.email.trim().toLowerCase();
+    const opts = { data: row };
+    if (/^https?:$/.test(location.protocol)) opts.emailRedirectTo = location.origin + location.pathname;
+    const { data, error } = await sb.auth.signUp({ email, password: S.draft.password, options: opts });
+    if (error) { S.authError = friendly(error); render(); return; }
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      S.authError = "An account with this email already exists. Log in instead."; S.authView = "login"; S.draft = { email }; render(); return;
+    }
+    if (!data.session) { S.pendingEmail = email; S.authView = "check"; S.authError = ""; S.draft = { email }; render(); }
+  },
+  "profile-create": async (f) => {
+    const row = profileRow(f); S.draft = row;
+    const err = checkProfile(row);
+    if (err) { S.formError = err; render(); return; }
+    const { data, error } = await sb.from("students").insert({ id: S.user.id, email: S.user.email, ...row }).select().single();
+    if (error) { S.formError = friendly(error); render(); return; }
+    S.profile = data; S.formError = ""; S.draft = {};
+    await loadData(); S.phase = "main"; render(); toast("Profile saved");
+  },
+  "profile-update": async (f) => {
+    const row = profileRow(f);
+    const err = checkProfile(row);
+    if (err) { S.formError = err; render(); return; }
+    const { data, error } = await sb.from("students").update(row).eq("id", S.user.id).select().single();
+    if (error) { S.formError = friendly(error); render(); return; }
+    S.profile = data; S.editing = false; S.formError = ""; render(); toast("Details updated");
+  },
+  "post": async (f) => {
+    if (!f.title.trim() || !f.body.trim()) { toast("Write a title and a message."); return; }
+    const clubId = S.manage.clubId;
+    const { error } = await sb.from("announcements").insert({ club_id: clubId, author_id: S.user.id, title: f.title.trim(), body: f.body.trim() });
+    if (error) { toast(friendly(error)); return; }
+    await loadData(); await loadManage(clubId); toast("Posted to members");
+  },
+  "pay": async () => {
+    const p = S.pay, clubId = p.clubId, uid = S.user.id;
+    const fail = (msg) => { p.error = msg; if (S.pay === p) render(); };
+    if (!p.file) return fail("Add your payment screenshot first.");
+    const path = `${uid}/${clubId}-${Date.now()}.jpg`;
+    const up = await sb.storage.from("receipts").upload(path, p.file, { contentType: "image/jpeg" });
+    if (up.error) return fail(friendly(up.error));
+    if (my(clubId)) {                                   // trying again after a payment was not accepted
+      const del = await sb.from("memberships").delete().eq("student_id", uid).eq("club_id", clubId);
+      if (del.error) return fail(friendly(del.error));
+    }
+    const { error } = await sb.from("memberships").insert({ student_id: uid, club_id: clubId, receipt_path: path });
+    if (error) { await loadData().catch(() => {}); return fail(friendly(error)); }
+    S.pay = null; await loadData(); render(); window.scrollTo(0, 0); toast("Sent to the committee for checking");
+  },
+  "reject": async (f, form) => {
+    const clubId = S.manage.clubId;
+    const { error } = await sb.from("memberships").update({ status: "rejected", reject_reason: f.reason.trim() || null })
+      .eq("club_id", clubId).eq("student_id", form.dataset.student);
+    if (error) { S.sheet.error = friendly(error); renderSheet(); return; }
+    S.sheet = null; await loadData(); await loadManage(clubId); toast("Marked as not accepted");
+  },
+  "club-fee": async (f) => {
+    const clubId = S.manage.clubId;
+    const club = S.clubs.find((c) => c.id === clubId);
+    const fail = (msg) => { S.manage.feeError = msg; const el = document.getElementById("fee-error"); if (el) el.innerHTML = `<div class="error" role="alert">${esc(msg)}</div>`; };
+    const fee = Math.round((Number(f.fee) || 0) * 100) / 100;
+    const number = f.pay_account_number.trim(), bank = f.pay_bank.trim(), holder = f.pay_account_name.trim();
+    if (fee < 0 || fee > 9999) return fail("Enter a fee between 0 and 9999.");
+    if (number && (!bank || !holder)) return fail("Add the bank and the account name as well.");
+    if (fee > 0 && !number && !S.manage.qrFile && !club.pay_qr_path) return fail("Add a QR code or a bank account so students can pay.");
+    let qrPath = club.pay_qr_path || null;
+    if (S.manage.qrFile) {
+      const path = `${clubId}/qr-${Date.now()}.jpg`;
+      const up = await sb.storage.from("club-qr").upload(path, S.manage.qrFile, { contentType: "image/jpeg" });
+      if (up.error) return fail(friendly(up.error));
+      qrPath = path;
+    }
+    const { error } = await sb.from("clubs").update({
+      fee, pay_bank: bank || null, pay_account_name: holder || null, pay_account_number: number || null,
+      pay_qr_path: qrPath, pay_note: f.pay_note.trim() || null
+    }).eq("id", clubId);
+    if (error) return fail(friendly(error));
+    await loadData(); await loadManage(clubId); toast("Fee details saved");
+  },
+  "add-club": async (f) => {
+    if (!f.name.trim()) { toast("Give the club a name."); return; }
+    if (String(f.fee).trim() === "") { toast("Enter the membership fee. Type 0 only if the club is free."); return; }
+    const fee = Math.round(Number(f.fee) * 100) / 100;
+    if (!(fee >= 0) || fee > 9999) { toast("Enter a fee between 0 and 9999."); return; }
+    const { error } = await sb.from("clubs").insert({ name: f.name.trim(), category: f.category.trim() || null, description: f.description.trim() || null, fee });
+    if (error) { toast(friendly(error)); return; }
+    await loadData(); await loadAdmin();
+    toast(fee > 0 ? "Club added. Its committee now needs to add the payment details." : "Club added");
+  },
+  "add-committee": async (f, form) => {
+    const who = (f.who || "").trim();
+    if (!who) { toast("Enter the student's email or student ID."); return; }
+    const q = sb.from("students").select("id, first_name");
+    const { data, error } = await (who.includes("@") ? q.eq("email", who.toLowerCase()) : q.eq("student_id", who)).maybeSingle();
+    if (error) { toast(friendly(error)); return; }
+    if (!data) { toast("No student found. They need to sign up first."); return; }
+    const ins = await sb.from("club_committee").insert({ club_id: Number(form.dataset.club), student_id: data.id, role: f.role.trim() || null });
+    if (ins.error) { toast(friendly(ins.error)); return; }
+    await loadData(); await loadAdmin(); toast(data.first_name + " added to committee");
+  }
+};
+
+document.addEventListener("click", (e) => {
+  const el = e.target.closest("[data-act]");
+  if (!el) return;
+  if (el.classList.contains("sheet-back") && e.target !== el) return;   // clicks inside the sheet don't close it
+  const fn = actions[el.dataset.act];
+  if (!fn) return;
+  e.preventDefault();
+  Promise.resolve(fn(el.dataset, el.tagName === "BUTTON" ? el : null)).catch((err) => toast(friendly(err)));
+});
+document.addEventListener("submit", (e) => {
+  const form = e.target.closest("[data-form]");
+  if (!form) return;
+  e.preventDefault();
+  const fn = forms[form.dataset.form];
+  const values = Object.fromEntries(new FormData(form).entries());
+  const btn = form.querySelector("button:not([type=button])");
+  busy(btn, () => fn(values, form)).catch((err) => toast(friendly(err)));
+});
+document.addEventListener("change", async (e) => {
+  const el = e.target;
+  const byId = (id) => document.getElementById(id);
+  if (el.id === "f-school") {                       // a different school has different majors and minors
+    for (const kind of ["major", "minor"]) {
+      byId("f-" + kind).innerHTML = courseOptions(kind, el.value, "").html;
+      byId("f-" + kind + "-other-wrap").hidden = true;
+      byId("f-" + kind + "-other").value = "";
+    }
+  }
+  if (el.id === "f-major" || el.id === "f-minor") {
+    const wrap = byId(el.id + "-other-wrap");
+    wrap.hidden = el.value !== OTHER;
+    if (!wrap.hidden) byId(el.id + "-other").focus();
+  }
+  if (el.id === "pay-file" && S.pay) {
+    const p = S.pay;
+    try { p.file = await shrinkImage(el.files[0], 1400, 0.82); p.preview = URL.createObjectURL(p.file); p.error = ""; }
+    catch (err) { p.file = null; p.preview = ""; p.error = friendly(err); }
+    if (S.pay !== p) return;
+    document.getElementById("pay-preview").innerHTML = p.preview ? `<img class="shot" src="${p.preview}" alt="Your payment screenshot">` : "";
+    document.getElementById("pay-error").innerHTML = p.error ? `<div class="error" role="alert">${esc(p.error)}</div>` : "";
+  }
+  if (el.id === "qr-file") {
+    const m = S.manage;
+    try { m.qrFile = await shrinkImage(el.files[0], 1200, 0.92); m.qrPreview = URL.createObjectURL(m.qrFile); m.feeError = ""; }
+    catch (err) { m.qrFile = null; m.qrPreview = ""; m.feeError = friendly(err); }
+    if (S.manage !== m) return;
+    const shown = m.qrPreview || m.qrUrl;
+    document.getElementById("qr-preview").innerHTML = shown ? `<img class="qr" src="${shown}" alt="The club's payment QR code">` : "";
+    document.getElementById("fee-error").innerHTML = m.feeError ? `<div class="error" role="alert">${esc(m.feeError)}</div>` : "";
+  }
+});
+document.addEventListener("input", (e) => {
+  if (e.target.id !== "club-search") return;
+  S.clubSearch = e.target.value;
+  document.getElementById("club-list").innerHTML = clubListHtml();
+});
+
+/* ---------------------------------------------------------------------
+   Start
+   --------------------------------------------------------------------- */
+async function handleSession(session) {
+  const uid = session && session.user ? session.user.id : null;
+  if (uid === currentUid) return;
+  currentUid = uid;
+  const keepAuth = { authView: S.authView, draft: S.draft, pendingEmail: S.pendingEmail };
+  reset();
+  if (!uid) { Object.assign(S, keepAuth.authView === "check" ? keepAuth : {}, { phase: "auth" }); render(); return; }
+  S.user = session.user; render();
+  try { await loadAccount(); }
+  catch (err) { S.phase = "fatal"; S.fatal = friendly(err); }
+  if (currentUid === uid) render();
+}
+
+(function start() {
+  if (!window.supabase) {
+    S.phase = "fatal"; S.fatal = "The app couldn't load. Check your internet connection and reload the page."; render(); return;
+  }
+  sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
+  sb.auth.onAuthStateChange((event, session) => { setTimeout(() => handleSession(session), 0); });
+  render();
+})();
+</script>
+</body>
+</html>
