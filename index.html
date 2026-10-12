@@ -322,7 +322,7 @@ function reset() {
     authView: "login", draft: {}, authError: "", pendingEmail: "",
     user: null, profile: null, isAdmin: false,
     clubs: [], mine: new Map(), committee: [], feed: [], toCheck: {}, pay: null,
-    v3: false, v5: false, v6: false, v7: false, carIndex: 0, postFiles: [], myColours: {}, signups: new Map(), myEvents: [], calMonth: null, calDay: null, post: null, allPosts: false,
+    v3: false, v5: false, v6: false, v7: false, carIndex: 0, postFiles: [], postClub: null, myColours: {}, signups: new Map(), myEvents: [], calMonth: null, calDay: null, post: null, allPosts: false,
     tab: "home", clubFilter: "all", clubSearch: "",
     sheet: null, editing: false, formError: "",
     manage: emptyManage(),
@@ -599,7 +599,7 @@ function audienceText(a) {
 // Times for calendars: an event with no end time is treated as one hour long.
 function eventTimes(a) { const s = new Date(a.event_start); return [s, a.event_end ? new Date(a.event_end) : new Date(s.getTime() + 3600000)]; }
 const icsDate = (d) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-const icsText = (s) => String(s || "").replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+const icsText = (s) => String(s || "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
 function downloadIcs(a) {
   const [s, e] = eventTimes(a);
   const fold = (l) => (l.length <= 73 ? l : l.match(/.{1,73}/g).join("\r\n "));
@@ -1139,6 +1139,7 @@ function viewManage() {
         <button class="btn" style="align-self:flex-start">Save fee details</button>
       </form>
     </div>`;
+  const canPostHere = canPost || (S.isAdmin && S.v3);
 
   return `
     ${back ? `<button class="link" style="align-self:flex-start" data-act="${canPost ? "manage-back" : "tab"}" data-tab="admin">Back</button>` : ""}
@@ -1150,8 +1151,8 @@ function viewManage() {
         ${active.length ? `<button class="btn ghost small" data-act="copy-members">Copy for Google Sheets</button>` : ""}</div>
       ${members}
     </div>
-    ${m.members !== null && (canPost || (S.isAdmin && S.v3)) ? postFormHtml() : ""}
-    <div class="stack"><h2>Posted</h2>${posts}</div>
+    <div class="stack"><div class="row between"><h2>Posted</h2>
+      ${m.members !== null && canPostHere ? `<button class="btn ghost small" data-act="go-post" data-club="${id}">New post</button>` : ""}</div>${posts}</div>
     ${detailsForm}
     ${colourForm}
     ${feeForm}`;
@@ -1183,13 +1184,21 @@ function signupTable(id, list) {
         <td>${r.paid_amount != null ? money(r.paid_amount) + " · " + ({ pending: "to check", confirmed: "approved", rejected: "not accepted" }[r.status] || "") : "Free"}</td></tr>`; }).join("")}</tbody></table></div>
     <button class="btn ghost small" style="align-self:flex-start" data-act="copy-signups" data-id="${id}">Copy for Google Sheets</button>`;
 }
-function postFormHtml(withClubPicker = false) {
-  return `<div class="stack">
-    <h2>Post an announcement</h2>
-    <form data-form="post" novalidate class="card">
-      ${withClubPicker ? `<label>Club<select name="club_id" id="a-club" required>
-          <option value="">Choose a club</option>
-          ${S.clubs.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select></label>` : ""}
+
+// Clubs this person can post for: their committees, plus every club for the admin (once the events update is run).
+function postableClubs() {
+  const ids = S.committee.map((c) => c.club_id);
+  if (S.isAdmin && S.v3) for (const c of S.clubs) if (!ids.includes(c.id)) ids.push(c.id);
+  return ids.filter((cid) => S.clubs.some((c) => c.id === cid)).sort((a, b) => clubName(a).localeCompare(clubName(b)));
+}
+function postFormHtml(ids, preset) {
+  const picker = ids.length === 1
+    ? `<input type="hidden" name="club_id" value="${ids[0]}"><div class="row"><span class="meta">Posting for</span>${clubChip(ids[0])}</div>`
+    : `<label>Club<select name="club_id" id="a-club" required>
+        <option value="">Choose a club</option>
+        ${ids.map((cid) => `<option value="${cid}" ${preset === cid ? "selected" : ""}>${esc(clubName(cid))}${isCommittee(cid) ? "" : " (as admin)"}</option>`).join("")}</select></label>`;
+  return `<form data-form="post" novalidate class="card">
+      ${picker}
       <label>Title<input name="title" id="a-title" required maxlength="120" placeholder="e.g. Fintech Ideathon 2026"></label>
       <label>Message<textarea name="body" id="a-body" required placeholder="What, when, where, and how it helps your members."></textarea></label>
       ${S.v7 ? `<label>Pictures <small>Optional, up to 4, such as a poster. The first one is shown on the announcement box.</small>
@@ -1218,8 +1227,19 @@ function postFormHtml(withClubPicker = false) {
         ${CONFIG.SCHOOLS.map((s, i) => `<label class="check"><input type="checkbox" name="aud_school" value="${esc(s)}" id="a-aud-${i}"> ${esc(s)}</label>`).join("")}
       </fieldset>` : ""}
       <button class="btn">Post</button>
-    </form>
-  </div>`;
+    </form>`;
+}
+function viewPostTab() {
+  const ids = postableClubs();
+  if (!ids.length) {
+    return `<h1>Post</h1><div class="empty"><p>${S.isAdmin && !S.v3
+      ? "To post for any club, run database update 4 (events) first. Until then, add yourself to a club's committee to post for it."
+      : S.isAdmin ? "No clubs yet. Add one in the Admin tab first." : "You can post once you're on a club's committee."}</p></div>`;
+  }
+  return `<div class="stack"><h1>New post</h1>
+      <p class="lead">Announcements and events go to members' Home, and to anyone else you choose.</p></div>
+    ${postFormHtml(ids, S.postClub)}
+    <p class="meta">To see, delete or check sign-ups for what's been posted, open the club in ${S.committee.length ? "Manage" : "Admin"}.</p>`;
 }
 
 function viewAdmin() {
@@ -1260,7 +1280,7 @@ function viewAdmin() {
   return `<div class="stack"><h1>Admin</h1>
       <p class="lead">${a.students ?? "–"} student${a.students === 1 ? "" : "s"} signed up · ${S.clubs.length} club${S.clubs.length === 1 ? "" : "s"}</p></div>
     ${a.error ? `<div class="error" role="alert">${esc(a.error)}</div>` : ""}
-    ${S.v3 && S.clubs.length ? postFormHtml(true) : ""}
+    <div class="stack"><h2>Clubs</h2>${clubs || `<div class="empty"><p>No clubs yet. Add the first one below.</p></div>`}</div>
     <div class="stack">
       <h2>Add a club</h2>
       <form data-form="add-club" novalidate class="card">
@@ -1272,8 +1292,7 @@ function viewAdmin() {
           <input name="fee" id="c-fee" type="number" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 20"></label>
         <button class="btn" style="align-self:flex-start">Add club</button>
       </form>
-    </div>
-    <div class="stack"><h2>Clubs</h2>${clubs || `<div class="empty"><p>No clubs yet. Add the first one above.</p></div>`}</div>`;
+    </div>`;
 }
 
 function viewProfile() {
@@ -1389,10 +1408,11 @@ function render() {
 
   const tabs = [["home", "Home"], ["clubs", "Clubs"]];
   const waiting = Object.values(S.toCheck).reduce((a, b) => a + b, 0);
+  if (S.committee.length || S.isAdmin) tabs.push(["post", "Post"]);
   if (S.committee.length) tabs.push(["manage", waiting ? `Manage (${waiting})` : "Manage"]);
   if (S.isAdmin) tabs.push(["admin", "Admin"]);
   tabs.push(["profile", "Profile"]);
-  const view = { home: S.pay ? viewPay : S.post ? viewPost : viewHome, clubs: S.pay ? viewPay : viewClubs, manage: viewManage, admin: viewAdmin, profile: viewProfile }[S.tab]();
+  const view = { home: S.pay ? viewPay : S.post ? viewPost : viewHome, clubs: S.pay ? viewPay : viewClubs, post: viewPostTab, manage: viewManage, admin: viewAdmin, profile: viewProfile }[S.tab]();
   app.innerHTML = `<header class="topbar">${brand}<span class="who">${esc(S.profile.email)}</span></header>
     <main>${view}</main>
     <nav class="tabs${tabs.length > 5 ? " many" : ""}" aria-label="Sections"><div>${tabs.map(([k, l]) =>
@@ -1461,7 +1481,7 @@ async function openPay(clubId, postId = null) {
   await Promise.all([getRef, getQr]);
 }
 function goTab(tab) {
-  S.tab = tab; S.editing = false; S.formError = ""; S.pay = null; S.post = null; S.postFiles = [];
+  S.tab = tab; S.editing = false; S.formError = ""; S.pay = null; S.post = null; S.postFiles = []; S.postClub = null;
   if (tab === "manage") {
     const mine = S.committee.map((c) => c.club_id);
     if (mine.length === 1) { loadManage(mine[0]); return; }
@@ -1480,6 +1500,7 @@ function goTab(tab) {
 
 const actions = {
   "tab": (d) => goTab(d.tab),
+  "go-post": (d) => { goTab("post"); S.postClub = Number(d.club); render(); },
   "reload": () => location.reload(),
   "auth-view": (d) => { S.authView = d.view; S.authError = ""; render(); },
   "logout": async (d, btn) => busy(btn, async () => { await sb.auth.signOut(); }),
@@ -1690,9 +1711,9 @@ const forms = {
     S.profile = data; S.editing = false; S.editDraft = null; S.formError = ""; render(); toast("Details updated");
   },
   "post": async (f, form) => {
-    if (form.querySelector("#a-club") && !f.club_id) { toast("Choose which club this is for."); return; }
+    if (!f.club_id) { toast("Choose which club this is for."); return; }
     if (!f.title.trim() || !f.body.trim()) { toast("Write a title and a message."); return; }
-    const clubId = f.club_id ? Number(f.club_id) : S.manage.clubId;
+    const clubId = Number(f.club_id);
     const row = { club_id: clubId, author_id: S.user.id, title: f.title.trim(), body: f.body.trim() };
     if (S.v3) {
       row.audience_all = !!f.aud_all;
@@ -1726,10 +1747,10 @@ const forms = {
     }
     const { error } = await sb.from("announcements").insert(row);
     if (error) { toast(friendly(error)); return; }
-    S.postFiles = [];
+    S.postFiles = []; S.postClub = clubId;               // keep the same club picked for the next post
     await loadData();
-    if (S.tab === "admin") await loadAdmin(); else await loadManage(clubId);
-    toast((row.audience_all ? "Posted to all students" : "Posted") + (S.tab === "admin" ? " for " + clubName(clubId) : ""));
+    render(); window.scrollTo(0, 0);
+    toast((row.audience_all ? "Posted to all students" : "Posted") + " for " + clubName(clubId));
   },
   "pay": async () => {
     const p = S.pay, clubId = p.clubId, uid = S.user.id;
@@ -1865,6 +1886,7 @@ document.addEventListener("change", async (e) => {
   if (el.id === "cal-m" || el.id === "cal-y") {
     S.calMonth = new Date(Number(byId("cal-y").value), Number(byId("cal-m").value), 1); S.calDay = null; render();
   }
+  if (el.id === "a-club") S.postClub = Number(el.value) || null;
   if (el.id === "a-is-event") byId("a-event-fields").hidden = !el.checked;
   if (el.id === "a-pics") {
     const files = [...el.files].slice(0, 4);
