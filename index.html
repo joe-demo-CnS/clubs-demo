@@ -224,6 +224,22 @@ td.num { font-variant-numeric: tabular-nums; }
   background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-weight: 600; font-size: .9rem; z-index: 30;
   max-width: calc(100% - 32px);
 }
+/* Perks: a two-column shelf of tiles, each opens the service's site */
+.perk-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+a.perk {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px;
+  display: flex; flex-direction: column; gap: 8px; min-width: 0; color: var(--ink); text-decoration: none;
+}
+a.perk:hover { border-color: var(--accent); }
+a.perk:active { transform: scale(.98); }
+.mono.logo { background: var(--line); padding: 0; overflow: hidden; }
+.mono.logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mono { width: 46px; height: 46px; border-radius: 12px; background: var(--c); color: #fff; display: grid; place-items: center;
+  font: 700 .82rem/1 var(--display); letter-spacing: .02em; text-align: center; padding: 2px; }
+a.perk h3 { font-size: .95rem; overflow-wrap: anywhere; }
+a.perk .meta { font-size: .8rem; }
+a.perk .go { margin-top: auto; font-size: .82rem; font-weight: 700; color: var(--accent); }
+@media (max-width: 340px) { .perk-grid { grid-template-columns: 1fr; } }
 .center { min-height: 60dvh; display: flex; align-items: center; justify-content: center; color: var(--muted); }
 @media (max-width: 360px) { .two { grid-template-columns: 1fr; } }
 </style>
@@ -301,7 +317,43 @@ const CONFIG = {
     ["#46A758", "Green"], ["#1E7B4B", "Forest"], ["#12A594", "Teal"], ["#0797B9", "Cyan"], ["#0090FF", "Blue"],
     ["#1F4E9C", "Navy"], ["#3E63DD", "Indigo"], ["#6E56CF", "Violet"], ["#8E4EC6", "Purple"], ["#AB4ABA", "Plum"],
     ["#A07D58", "Brown"], ["#7A4B2A", "Chocolate"], ["#6E7B8B", "Slate"], ["#3A4450", "Charcoal"]],
-  CATEGORIES: ["Academic", "Career", "Culture", "Sports", "Arts", "Community", "Special interest"]
+  CATEGORIES: ["Academic", "Career", "Culture", "Sports", "Arts", "Community", "Special interest"],
+
+  // PERKS: free things Monash students get. Tapping a tile opens its "url".
+  // To add or change a link, paste it between the quotes after url. A perk with url: "" opens PERKS_FALLBACK.
+  // group = which button it sits under; section = the heading inside that group; short = the letters on its tile.
+  // logo = the picture on its tile (a name from PERK_LOGOS, or an image address).
+  // site = the paper's own website; without a logo, the tile loads that site's official icon.
+  // If neither works, the tile shows "short" in a colour.
+  PERK_GROUPS: ["News", "Apps and tools"],
+  // Logo pictures kept inside this file, so nothing extra needs uploading.
+  PERK_LOGOS: {
+    wsj: "data:image/jpeg;base64,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",
+    ft: "data:image/jpeg;base64,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"
+  },
+  PERKS_FALLBACK: "https://www.monash.edu/library/find-and-borrow/current-newspapers",
+  PERKS: [
+    { group: "News", section: "International", short: "WSJ", logo: "wsj", name: "The Wall Street Journal", note: "U.S. · 2010 to now", url: "" },
+    { group: "News", section: "International", short: "FT", logo: "ft", name: "Financial Times", note: "London · world news, markets, careers", url: "" },
+    { group: "News", section: "International", short: "NYT", site: "nytimes.com", name: "The New York Times", note: "U.S. · news, games, cooking, Wirecutter, The Athletic", url: "" },
+    { group: "News", section: "International", short: "Times", site: "thetimes.com", name: "The Times", note: "UK · 1985 to now", url: "" },
+    { group: "News", section: "International", short: "SCMP", site: "scmp.com", name: "South China Morning Post", note: "Hong Kong · 1993 to now", url: "" },
+    { group: "News", section: "International", short: "WaPo", site: "washingtonpost.com", name: "The Washington Post", note: "U.S. · 2016 to now", url: "" },
+    { group: "News", section: "International", short: "WT", site: "washingtontimes.com", name: "The Washington Times", note: "U.S. · 1990 to now", url: "" },
+    { group: "News", section: "International", short: "Mail", site: "dailymail.co.uk", name: "The Daily Mail", note: "UK · 1990 to now", url: "" },
+    { group: "News", section: "International", short: "DT", site: "telegraph.co.uk", name: "The Daily Telegraph", note: "UK · 2012 to now", url: "" },
+    { group: "News", section: "International", short: "JP", site: "jpost.com", name: "The Jerusalem Post", note: "1989 to now", url: "" },
+    { group: "News", section: "International", short: "LM", site: "lemonde.fr", name: "Le Monde", note: "France · 2001 to now", url: "" },
+    { group: "News", section: "International", short: "LMD", site: "monde-diplomatique.fr", name: "Le Monde diplomatique", note: "France · 1997 to now", url: "" },
+    { group: "News", section: "Australian", short: "AFR", site: "afr.com", name: "The Australian Financial Review", note: "1987 to now · 3-day delay", url: "" },
+    { group: "News", section: "Australian", short: "Age", site: "theage.com.au", name: "The Age", note: "1991 to now", url: "" },
+    { group: "News", section: "Australian", short: "Aus", site: "theaustralian.com.au", name: "The Australian", note: "1998 to now", url: "" },
+    { group: "News", section: "Australian", short: "SMH", site: "smh.com.au", name: "The Sydney Morning Herald", note: "1986 to now", url: "https://www.monash.edu/library/find-and-borrow/current-newspapers/the-sydney-morning-herald" },
+    { group: "News", section: "Australian", short: "CT", site: "canberratimes.com.au", name: "The Canberra Times", note: "1996 to now", url: "" },
+    { group: "News", section: "Australian", short: "CM", site: "couriermail.com.au", name: "The Courier Mail", note: "1998 to now", url: "" },
+    { group: "News", section: "Australian", short: "DT", site: "dailytelegraph.com.au", name: "The Daily Telegraph (Sydney)", note: "1998 to now", url: "" },
+    { group: "News", section: "Australian", short: "HS", site: "heraldsun.com.au", name: "The Herald Sun", note: "1999 to now", url: "" }
+  ]
 };
 
 /* ===================================================================== */
@@ -314,6 +366,7 @@ const day = (iso) => new Date(iso).toLocaleDateString("en-MY", { day: "numeric",
 
 let sb = null;
 let currentUid;          // undefined until the first session check finishes
+let recovering = false;  // true after opening a reset-password link, until the new password is saved
 const S = {};
 const emptyManage = (clubId = null) => ({ clubId, members: null, posts: null, error: "", qrFile: null, qrPreview: "", qrUrl: "", feeError: "", counts: {}, signupLists: {}, eventPending: [] });
 function reset() {
@@ -323,7 +376,7 @@ function reset() {
     user: null, profile: null, isAdmin: false,
     clubs: [], mine: new Map(), committee: [], feed: [], toCheck: {}, pay: null,
     v3: false, v5: false, v6: false, v7: false, carIndex: 0, postFiles: [], postClub: null, myColours: {}, signups: new Map(), myEvents: [], calMonth: null, calDay: null, post: null, allPosts: false,
-    tab: "home", clubFilter: "all", clubSearch: "",
+    tab: "home", clubFilter: "all", clubSearch: "", perkGroup: CONFIG.PERK_GROUPS[0], perkSearch: "",
     sheet: null, editing: false, formError: "",
     manage: emptyManage(),
     admin: { loaded: false, committee: [], counts: {}, students: null, open: null, error: "" }
@@ -717,6 +770,26 @@ function profileFields(d, withPhoneNote = true) {
 
 function viewAuth() {
   const err = S.authError ? `<div class="error" role="alert">${esc(S.authError)}</div>` : "";
+  if (S.authView === "forgot") {
+    return `<main>
+      <div class="stack"><h1>Forgot your password?</h1>
+      <p class="lead">Enter the email you signed up with. We'll send you a link to choose a new password.</p></div>
+      ${err}
+      <form data-form="forgot" novalidate>
+        <label>Student email<input name="email" id="r-email" type="email" required autocomplete="email" value="${val("email")}"></label>
+        <button class="btn wide">Send reset link</button>
+      </form>
+      <p class="meta"><button class="link" data-act="auth-view" data-view="login">Back to log in</button></p>
+    </main>`;
+  }
+  if (S.authView === "forgot-sent") {
+    return `<main>
+      <h1>Check your email</h1>
+      <p class="lead">If <strong>${esc(S.pendingEmail)}</strong> has an account, a link to reset your password is on its way. Open it on this device, then choose a new password.</p>
+      <p class="meta">Nothing after a few minutes? Check your spam or junk folder.</p>
+      <button class="btn wide" data-act="auth-view" data-view="login">Back to log in</button>
+    </main>`;
+  }
   if (S.authView === "check") {
     return `<main>
       <h1>Check your email</h1>
@@ -766,6 +839,7 @@ function viewAuth() {
       <label>Password<input name="password" id="l-pass" type="password" required autocomplete="current-password"></label>
       <button class="btn wide">Log in</button>
     </form>
+    <p class="meta"><button class="link" data-act="auth-view" data-view="forgot">Forgot password?</button></p>
     <p class="meta">New here? <button class="link" data-act="auth-view" data-view="signup1">Create an account</button></p>
   </main>`;
 }
@@ -1295,6 +1369,53 @@ function viewAdmin() {
     </div>`;
 }
 
+// Perks tab: news subscriptions, apps and tools that come free with being a Monash student.
+function perkColour(p) {            // neighbouring tiles get colours far apart
+  const order = [15, 0, 11, 18, 5, 12, 4, 16, 20, 9, 1, 13, 22, 7, 10, 19, 3, 21, 23];
+  return CONFIG.CLUB_COLOURS[order[CONFIG.PERKS.indexOf(p) % order.length]][0];
+}
+function perkIcon(p) {
+  const src = p.logo ? (CONFIG.PERK_LOGOS[p.logo] || p.logo)
+    : p.site ? "https://www.google.com/s2/favicons?sz=128&domain=" + encodeURIComponent(p.site) : "";
+  const letters = `<span class="mono" style="--c:${perkColour(p)}" aria-hidden="true">${esc(p.short)}</span>`;
+  if (!src) return letters;
+  // If the picture can't load, fall back to the letter tile.
+  return `<span class="mono logo" style="--c:${perkColour(p)}" aria-hidden="true"><img src="${esc(src)}" alt="" loading="lazy" onload="perkIconCheck(this)"
+    onerror="perkIconFail(this)" data-short="${esc(p.short)}"></span>`;
+}
+// A missing or tiny (blurry) icon is swapped for the letter tile.
+function perkIconFail(img) { const box = img.parentNode; box.classList.remove("logo"); box.textContent = img.dataset.short; }
+function perkIconCheck(img) { if (!img.src.startsWith("data:") && img.naturalWidth < 48) perkIconFail(img); }
+function perkListHtml() {
+  const q = S.perkSearch.trim().toLowerCase();
+  const list = CONFIG.PERKS.filter((p) => (q ? true : p.group === S.perkGroup)
+    && (!q || (p.name + " " + p.short + " " + (p.note || "") + " " + (p.section || "")).toLowerCase().includes(q)));
+  if (!list.length) {
+    return `<div class="empty"><p>${q ? "No perks match that search." : "Coming soon. Perks in this group will appear here."}</p></div>`;
+  }
+  const sections = {};
+  for (const p of list) (sections[q ? p.group + (p.section ? " · " + p.section : "") : p.section || ""] ||= []).push(p);
+  return Object.entries(sections).map(([title, items]) => `<div class="stack">
+      ${title ? `<div class="cat">${esc(title)}</div>` : ""}
+      <div class="perk-grid">${items.map((p) => `<a class="perk" href="${esc(p.url || CONFIG.PERKS_FALLBACK)}" target="_blank" rel="noopener">
+        ${perkIcon(p)}
+        <h3>${esc(p.name)}</h3>
+        ${p.note ? `<p class="meta">${esc(p.note)}</p>` : ""}
+        <span class="go">Open ›</span>
+      </a>`).join("")}</div>
+    </div>`).join("");
+}
+function viewPerks() {
+  return `<div class="stack"><h1>Perks</h1>
+      <p class="lead">Free with your Monash account. Tap one to open it.</p></div>
+    <div class="seg" role="group" aria-label="Which perks to show">
+      ${CONFIG.PERK_GROUPS.map((g) => `<button data-act="perk-group" data-group="${esc(g)}" aria-pressed="${S.perkGroup === g}">${esc(g)}</button>`).join("")}
+    </div>
+    <input id="perk-search" type="search" placeholder="Search perks, e.g. WSJ" aria-label="Search perks" value="${esc(S.perkSearch)}">
+    <div id="perk-list" class="stack" style="gap:18px">${perkListHtml()}</div>
+    <p class="note">The first time, you sign in with your Monash email and password on Monash's own page. After that your browser remembers you. Some papers (like the WSJ and NYT) ask you to make a free account with your student email once.</p>`;
+}
+
 function viewProfile() {
   const p = S.profile;
   if (S.editing) {
@@ -1324,6 +1445,7 @@ function viewProfile() {
     </dl></div>
     <p class="meta">Update this once and every club you've joined sees the change. Only the committees of clubs you join can see these details.</p>
     <button class="btn ghost wide" data-act="edit">Edit details</button>
+    <button class="btn quiet wide" data-act="ask-password">Change password</button>
     <button class="btn quiet wide" data-act="logout">Log out</button>`;
 }
 
@@ -1379,6 +1501,8 @@ function viewSheet() {
     body = `<h2>${esc(s.name)}</h2>
       ${s.url ? `<img class="shot" src="${s.url}" alt="Payment screenshot from ${esc(s.name)}">`
         : `<p class="meta">${s.failed ? "The screenshot couldn't be loaded." : "Loading screenshot…"}</p>`}`;
+  } else if (s.type === "password") {
+    body = `<h2>Change your password</h2>${newPasswordForm(err)}`;
   } else if (s.type === "reject") {
     body = `<h2>Mark ${esc(s.name)}'s payment as not accepted?</h2>
       <form data-form="reject" data-student="${esc(s.student)}" data-kind="${esc(s.kind || "")}" data-post="${esc(s.post || "")}" novalidate>
@@ -1392,6 +1516,23 @@ function viewSheet() {
     ${body}<button class="btn quiet wide" data-act="sheet-close">${close}</button></div></div>`;
 }
 function renderSheet() { overlay.innerHTML = viewSheet(); }
+function newPasswordForm(err) {
+  return `<form data-form="new-password" novalidate>
+      <label>New password <small>At least 8 characters.</small>
+        <input name="password" id="np-pass" type="password" required minlength="8" autocomplete="new-password"></label>
+      <label>Type it again<input name="password2" id="np-pass2" type="password" required autocomplete="new-password"></label>
+      ${err || ""}
+      <button class="btn wide">Save new password</button>
+    </form>`;
+}
+// Opened from the reset link in the email: the student is signed in just long enough to choose a new password.
+function viewRecovery() {
+  return `<main>
+    <div class="stack"><h1>Choose a new password</h1>
+    <p class="lead">For ${esc((S.user && S.user.email) || "your account")}.</p></div>
+    ${newPasswordForm(S.recoveryError ? `<div class="error" role="alert">${esc(S.recoveryError)}</div>` : "")}
+  </main>`;
+}
 
 function render() {
   const brand = `<span class="brand"><i></i>${esc(CONFIG.APP_NAME)}</span>`;
@@ -1403,6 +1544,7 @@ function render() {
       ${S.user ? `<button class="btn quiet wide" data-act="logout">Log out</button>` : ""}</main>`;
     overlay.innerHTML = ""; return;
   }
+  if (recovering && S.user) { app.innerHTML = `<header class="topbar">${brand}</header>${viewRecovery()}`; overlay.innerHTML = ""; return; }
   if (S.phase === "auth") { app.innerHTML = `<header class="topbar">${brand}</header>${viewAuth()}`; overlay.innerHTML = ""; return; }
   if (S.phase === "profile") { app.innerHTML = `<header class="topbar">${brand}</header>${viewProfileSetup()}`; overlay.innerHTML = ""; return; }
 
@@ -1411,8 +1553,9 @@ function render() {
   if (S.committee.length || S.isAdmin) tabs.push(["post", "Post"]);
   if (S.committee.length) tabs.push(["manage", waiting ? `Manage (${waiting})` : "Manage"]);
   if (S.isAdmin) tabs.push(["admin", "Admin"]);
+  tabs.push(["perks", "Perks"]);
   tabs.push(["profile", "Profile"]);
-  const view = { home: S.pay ? viewPay : S.post ? viewPost : viewHome, clubs: S.pay ? viewPay : viewClubs, post: viewPostTab, manage: viewManage, admin: viewAdmin, profile: viewProfile }[S.tab]();
+  const view = { home: S.pay ? viewPay : S.post ? viewPost : viewHome, clubs: S.pay ? viewPay : viewClubs, post: viewPostTab, manage: viewManage, admin: viewAdmin, perks: viewPerks, profile: viewProfile }[S.tab]();
   app.innerHTML = `<header class="topbar">${brand}<span class="who">${esc(S.profile.email)}</span></header>
     <main>${view}</main>
     <nav class="tabs${tabs.length > 5 ? " many" : ""}" aria-label="Sections"><div>${tabs.map(([k, l]) =>
@@ -1505,6 +1648,7 @@ const actions = {
   "auth-view": (d) => { S.authView = d.view; S.authError = ""; render(); },
   "logout": async (d, btn) => busy(btn, async () => { await sb.auth.signOut(); }),
   "club-filter": (d) => { S.clubFilter = d.filter; render(); },
+  "perk-group": (d) => { S.perkGroup = d.group; S.perkSearch = ""; render(); },
   "ask-join": (d) => {
     const id = Number(d.club);
     const c = S.clubs.find((x) => x.id === id);
@@ -1604,6 +1748,7 @@ const actions = {
     if (error) { toast(friendly(error)); return; }
     await loadData(); await loadManage(clubId); toast("Payment approved");
   }),
+  "ask-password": () => { S.sheet = { type: "password" }; renderSheet(); },
   "edit": () => { S.editing = true; S.editDraft = null; S.formError = ""; render(); },
   "edit-cancel": () => { S.editing = false; S.editDraft = null; S.formError = ""; render(); },
   "manage": async (d) => {
@@ -1664,6 +1809,26 @@ const forms = {
     if (!f.email || !f.password) { S.authError = "Enter your email and password."; render(); return; }
     const { error } = await sb.auth.signInWithPassword({ email: f.email.trim(), password: f.password });
     if (error) { S.authError = friendly(error); render(); }
+  },
+  "forgot": async (f) => {
+    const email = (f.email || "").trim().toLowerCase();
+    S.draft = { email };
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { S.authError = "Enter the email you signed up with."; render(); return; }
+    const opts = /^https?:$/.test(location.protocol) ? { redirectTo: location.origin + location.pathname } : {};
+    const { error } = await sb.auth.resetPasswordForEmail(email, opts);
+    if (error) { S.authError = friendly(error); render(); return; }
+    S.authError = ""; S.pendingEmail = email; S.authView = "forgot-sent"; render();
+  },
+  "new-password": async (f) => {
+    const fromSheet = !!(S.sheet && S.sheet.type === "password");
+    const fail = (msg) => { if (fromSheet) { S.sheet.error = msg; renderSheet(); } else { S.recoveryError = msg; render(); } };
+    if ((f.password || "").length < 8) return fail("Choose a password with at least 8 characters.");
+    if (f.password !== f.password2) return fail("The two passwords don't match.");
+    const { error } = await sb.auth.updateUser({ password: f.password });
+    if (error) return fail(/different from the old/i.test(error.message) ? "Choose a password different from your old one." : friendly(error));
+    S.sheet = null; S.recoveryError = "";
+    if (recovering) { recovering = false; history.replaceState(null, "", location.pathname); }
+    render(); toast("New password saved");
   },
   "signup1": async (f) => {
     Object.assign(S.draft, f);
@@ -1918,6 +2083,11 @@ document.addEventListener("change", async (e) => {
   }
 });
 document.addEventListener("input", (e) => {
+  if (e.target.id === "perk-search") {
+    S.perkSearch = e.target.value;
+    document.getElementById("perk-list").innerHTML = perkListHtml();
+    return;
+  }
   if (e.target.id !== "club-search") return;
   S.clubSearch = e.target.value;
   document.getElementById("club-list").innerHTML = clubListHtml();
@@ -1944,7 +2114,10 @@ async function handleSession(session) {
     S.phase = "fatal"; S.fatal = "The app couldn't load. Check your internet connection and reload the page."; render(); return;
   }
   sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
-  sb.auth.onAuthStateChange((event, session) => { setTimeout(() => handleSession(session), 0); });
+  sb.auth.onAuthStateChange((event, session) => {
+    if (event === "PASSWORD_RECOVERY") recovering = true;     // arrived from a reset-password email
+    setTimeout(async () => { await handleSession(session); if (recovering) render(); }, 0);
+  });
   render();
 })();
 </script>
