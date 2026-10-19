@@ -240,6 +240,25 @@ a.perk h3 { font-size: .95rem; overflow-wrap: anywhere; }
 a.perk .meta { font-size: .8rem; }
 a.perk .go { margin-top: auto; font-size: .82rem; font-weight: 700; color: var(--accent); }
 @media (max-width: 340px) { .perk-grid { grid-template-columns: 1fr; } }
+/* Certificates: earned ones read like entries on a CV; club ones carry a "verified" seal */
+.tabs.lots button { font-size: .68rem; padding-inline: 0; letter-spacing: -.01em; }
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
+.stat b { display: block; font: 700 1.7rem/1.1 var(--display); font-variant-numeric: tabular-nums; }
+.stat span { color: var(--muted); font-size: .84rem; }
+.card.cert { border-left: 5px solid var(--club, var(--line)); }
+.cert .award { font-weight: 700; color: var(--accent); }
+.verified { display: inline-flex; align-items: center; gap: 6px; font-size: .84rem; font-weight: 700; color: var(--accent); }
+.verified svg { width: 16px; height: 16px; flex: none; }
+.chip.fit { background: var(--mark); color: var(--mark-ink); }
+.free-head { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.free-head .mono { flex: none; }
+.free-head .grow h3 { overflow-wrap: anywhere; }
+.pick { display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow-y: auto; padding-right: 2px; }
+.pick label.check { padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; }
+.pick label.check small { display: block; font-weight: 400; color: var(--muted); }
+.given { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.given:last-child { border-bottom: 0; }
 .center { min-height: 60dvh; display: flex; align-items: center; justify-content: center; color: var(--muted); }
 @media (max-width: 360px) { .two { grid-template-columns: 1fr; } }
 </style>
@@ -353,7 +372,62 @@ const CONFIG = {
     { group: "News", section: "Australian", short: "CM", site: "couriermail.com.au", name: "The Courier Mail", note: "1998 to now", url: "" },
     { group: "News", section: "Australian", short: "DT", site: "dailytelegraph.com.au", name: "The Daily Telegraph (Sydney)", note: "1998 to now", url: "" },
     { group: "News", section: "Australian", short: "HS", site: "heraldsun.com.au", name: "The Herald Sun", note: "1999 to now", url: "" }
-  ]
+  ],
+
+  // FREE CERTIFICATES shown under Certificates → "Get free certs".
+  // key   = a short code, never change it once students have used it (it's how the app knows they've got it)
+  // access = "monash" (needs your Monash student email or student status) or "anyone" (free for everyone)
+  // fits  = schools, majors or minors it suits; students who match see "Fits your studies". Leave [] for everyone.
+  // Check each one before launch: providers change their offers.
+  FREE_CERTS: [
+    { key: "bmc", short: "BMC", name: "Bloomberg Market Concepts", issuer: "Bloomberg", access: "monash",
+      what: "About 12 hours of self-paced videos on economics, currencies, fixed income and equities, ending in a certificate.",
+      why: "A well-known line on finance and banking CVs; shows you can read markets, not just pass the unit.",
+      url: "https://www.bloomberg.com/professional/product/bloomberg-market-concepts/",
+      fits: ["School of Business", "Banking and Financial Management", "Applied Economics", "Fintech", "Actuarial Analytics", "Econometrics and Business Statistics"] },
+    { key: "github-foundations", short: "GH", name: "GitHub Foundations", issuer: "GitHub", access: "monash",
+      what: "A proctored exam on Git, GitHub and collaboration. The exam fee is waived for students verified through GitHub Education.",
+      why: "Every tech team uses GitHub; a certification proves it before your first interview.",
+      url: "https://education.github.com/discount_requests/application",
+      fits: ["School of Information Technology", "School of Engineering", "Data Science", "Applied Data Science", "Computer Science", "Software Engineering", "Business Analytics", "Fintech"] },
+    { key: "mongodb", short: "MDB", name: "MongoDB Associate Developer", issuer: "MongoDB", access: "monash",
+      what: "Free exam voucher once you finish the MongoDB University learning path, through the GitHub Student Developer Pack.",
+      why: "A recognised database certification for software, data and fintech roles.",
+      url: "https://education.github.com/pack",
+      fits: ["School of Information Technology", "Computer Science", "Data Science", "Software Engineering", "Applied Data Science"] },
+    { key: "ms-applied-skills", short: "MS", name: "Microsoft Applied Skills", issuer: "Microsoft", access: "anyone",
+      what: "Hands-on assessments (Excel and Power BI, Azure, AI) that give a Microsoft-verified credential. Many are free.",
+      why: "Shows a specific job skill, such as building a Power BI report, which employers can check online.",
+      url: "https://learn.microsoft.com/en-us/credentials/applied-skills/",
+      fits: [] },
+    { key: "oci-foundations", short: "OCI", name: "Oracle Cloud Infrastructure Foundations", issuer: "Oracle", access: "anyone",
+      what: "Oracle's entry-level cloud and AI certifications, with free training and a free exam.",
+      why: "A real cloud certification on your CV without paying an exam fee.",
+      url: "https://mylearn.oracle.com/",
+      fits: ["School of Information Technology", "School of Engineering", "Data Science", "Business Analytics"] },
+    { key: "ibm-skillsbuild", short: "IBM", name: "IBM SkillsBuild", issuer: "IBM", access: "anyone",
+      what: "Short courses in AI, data, cybersecurity and workplace skills, each with a digital badge.",
+      why: "Quick badges to show interest in a field before you've had an internship in it.",
+      url: "https://skillsbuild.org/",
+      fits: [] },
+    { key: "cisco-netacad", short: "NA", name: "Cisco Networking Academy", issuer: "Cisco", access: "anyone",
+      what: "Free courses in networking, cybersecurity and Python, with a badge for each one you complete.",
+      why: "A foundation for IT, cybersecurity and engineering roles.",
+      url: "https://www.netacad.com/",
+      fits: ["School of Information Technology", "School of Engineering", "Computer Science", "Software Engineering", "Electrical and Computer Systems Engineering"] },
+    { key: "forage", short: "F", name: "Forage job simulations", issuer: "Forage", access: "anyone",
+      what: "Free virtual work experience made by firms such as banks and consulting firms, with a certificate for each.",
+      why: "Lets you say you've done the work of a role, and gives you something to talk about in interviews.",
+      url: "https://www.theforage.com/",
+      fits: [] },
+    { key: "hubspot", short: "HS", name: "HubSpot Academy", issuer: "HubSpot", access: "anyone",
+      what: "Free certifications in digital marketing, content, social media and sales.",
+      why: "Commonly asked for in marketing internships.",
+      url: "https://academy.hubspot.com/",
+      fits: ["Strategic Marketing", "Digital Marketing", "Digital Business", "Communication and Media Studies", "Digital Media and Communication"] }
+  ],
+  // Suggestions for the award when a club gives certificates.
+  CERT_AWARDS: ["Participant", "Finalist", "Winner", "1st place", "2nd place", "3rd place", "Best presenter", "Volunteer", "Organising committee"]
 };
 
 /* ===================================================================== */
@@ -368,7 +442,8 @@ let sb = null;
 let currentUid;          // undefined until the first session check finishes
 let recovering = false;  // true after opening a reset-password link, until the new password is saved
 const S = {};
-const emptyManage = (clubId = null) => ({ clubId, members: null, posts: null, error: "", qrFile: null, qrPreview: "", qrUrl: "", feeError: "", counts: {}, signupLists: {}, eventPending: [] });
+const emptyManage = (clubId = null) => ({ clubId, members: null, posts: null, error: "", qrFile: null, qrPreview: "", qrUrl: "", feeError: "", counts: {}, signupLists: {}, eventPending: [],
+  certFor: null, certSignups: null, certGiven: null, certFile: null, certError: "" });
 function reset() {
   Object.assign(S, {
     phase: "loading", fatal: "",
@@ -377,6 +452,7 @@ function reset() {
     clubs: [], mine: new Map(), committee: [], feed: [], toCheck: {}, pay: null,
     v3: false, v5: false, v6: false, v7: false, carIndex: 0, postFiles: [], postClub: null, myColours: {}, signups: new Map(), myEvents: [], calMonth: null, calDay: null, post: null, allPosts: false,
     tab: "home", clubFilter: "all", clubSearch: "", perkGroup: CONFIG.PERK_GROUPS[0], perkSearch: "",
+    v8: false, certs: [], certView: "mine",
     sheet: null, editing: false, formError: "",
     manage: emptyManage(),
     admin: { loaded: false, committee: [], counts: {}, students: null, open: null, error: "" }
@@ -392,6 +468,7 @@ function friendly(err) {
   if (code === "23505" && /club_committee/.test(m)) return "That student is already on this committee.";
   if (code === "23505" && /memberships/.test(m)) return "You have already joined this club.";
   if (code === "23514" && /major_or_minor/.test(m)) return "From Year 2 onwards, choose your major or a minor.";
+  if (code === "23505" && /certificates_one_award/.test(m)) return "That student already has this award for this event.";
   if (/receipt_required/.test(m)) return "Add your payment screenshot first.";
   if (/own_payment/.test(m)) return "Another committee member has to check your own payment.";
   if (/mime type|exceeded the maximum|too large/i.test(m)) return "Use a JPG or PNG image under 5 MB.";
@@ -497,6 +574,8 @@ async function loadAccount() {
   S.v6 = !probe6.error;
   const probe7 = S.v3 ? await sb.from("announcements").select("image_paths").limit(1) : { error: true };
   S.v7 = !probe7.error;
+  const probe8 = await sb.from("certificates").select("id").limit(1);
+  S.v8 = !probe8.error;
   const [p, a] = await Promise.all([
     sb.from("students").select("*").eq("id", uid).maybeSingle(),
     sb.from("admins").select("user_id").eq("user_id", uid).maybeSingle()
@@ -547,6 +626,7 @@ async function loadData() {
     S.myEvents = e.data.filter((r) => r.status !== "rejected").map((r) => r.announcements).filter((a) => a && a.event_start)
       .sort((x, y) => new Date(x.event_start) - new Date(y.event_start));
   }
+  if (S.v8) await loadCerts();
   S.toCheck = {};
   if (k.data.length) {
     const p = await sb.from("memberships").select("club_id").eq("status", "pending").in("club_id", k.data.map((r) => r.club_id));
@@ -558,6 +638,13 @@ async function loadData() {
       for (const r of ep.data || []) S.toCheck[r.announcements.club_id] = (S.toCheck[r.announcements.club_id] || 0) + 1;
     }
   }
+}
+
+async function loadCerts() {
+  const { data, error } = await sb.from("certificates").select("*").eq("student_id", S.user.id)
+    .order("issued_on", { ascending: false }).order("id", { ascending: false });
+  if (error) throw error;
+  S.certs = data;
 }
 
 async function loadManage(clubId) {
@@ -1115,6 +1202,7 @@ function viewManage() {
       </button>`).join("")}</div>`;
   }
   const m = S.manage;
+  if (m.certFor != null) return viewGiveCerts();
   const club = S.clubs.find((c) => c.id === id) || {};
   const fee = Number(club.fee) || 0;
   const canPost = isCommittee(id);
@@ -1174,7 +1262,8 @@ function viewManage() {
         ${a.signups_open ? `<div class="row"><strong>${n} signed up</strong>
           ${n ? `<button class="btn ghost small" data-act="${list ? "hide-signups" : "show-signups"}" data-id="${a.id}">${list ? "Hide list" : "See who"}</button>` : ""}</div>` : ""}
         ${list ? signupTable(a.id, list) : ""}
-        ${canEdit ? `<div class="row"><button class="btn danger small" data-act="ask-delete-post" data-id="${a.id}">Delete</button></div>` : ""}
+        ${canEdit ? `<div class="row">${S.v8 && a.event_start && a.signups_open ? `<button class="btn ghost small" data-act="give-certs" data-id="${a.id}">Give certificates</button>` : ""}
+          <button class="btn danger small" data-act="ask-delete-post" data-id="${a.id}">Delete</button></div>` : ""}
       </div>`; }).join("");
 
   const colourForm = !canEdit || m.members === null || !("color" in club) ? "" : `<div class="stack">
@@ -1416,6 +1505,165 @@ function viewPerks() {
     <p class="note">The first time, you sign in with your Monash email and password on Monash's own page. After that your browser remembers you. Some papers (like the WSJ and NYT) ask you to make a free account with your student email once.</p>`;
 }
 
+/* ---------------------------------------------------------------------
+   Certificates tab: what the student has earned, and free ones to get.
+   Club certificates are given by the club's committee (verified);
+   outside ones the student adds themselves.
+   --------------------------------------------------------------------- */
+const VERIFIED_ICON = `<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M10 1.5l2.1 1.6 2.6-.2.9 2.5 2.3 1.3-.6 2.6 1.2 2.4-2 1.7-.3 2.6-2.6.5-1.6 2.1-2.4-1.1-2.4 1.1-1.6-2.1-2.6-.5-.3-2.6-2-1.7 1.2-2.4-.6-2.6 2.3-1.3.9-2.5 2.6.2z"/><path fill="none" stroke="var(--surface)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M6.5 10.2l2.3 2.3 4.7-4.9"/></svg>`;
+// "2026-10-19" → a local date (no time-zone shift).
+const dateOnly = (d) => { const [y, m, dd] = String(d).split("-").map(Number); return new Date(y, (m || 1) - 1, dd || 1); };
+const certDay = (d) => dateOnly(d).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" });
+const certMonth = (d) => dateOnly(d).toLocaleDateString("en-MY", { month: "short", year: "numeric" });
+const isoToday = () => { const n = new Date(); return new Date(n.getTime() - n.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+const isoLocalDay = (iso) => { const d = new Date(iso); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+const freeCert = (key) => CONFIG.FREE_CERTS.find((f) => f.key === key);
+// Does a free certificate suit this student's school, majors or minors?
+function certFits(f) {
+  const p = S.profile || {};
+  const mine = [p.school, p.major, p.major2, p.minor, p.minor2].filter(Boolean);
+  return (f.fits || []).some((x) => mine.includes(x));
+}
+function certTile(short, colour) {
+  return `<span class="mono" style="--c:${colour}" aria-hidden="true">${esc(short)}</span>`;
+}
+function certCard(c) {
+  const fileBtn = c.file_path ? `<button class="btn ghost small" data-act="view-cert" data-id="${c.id}">View certificate</button>` : "";
+  if (c.source === "club") {
+    const live = c.club_id && S.clubs.some((x) => x.id === c.club_id);
+    const colour = live ? clubColour(c.club_id) : "var(--line)";
+    const from = c.club_name || "a club";
+    return `<article class="card cert" style="--club:${colour}">
+      <div class="row between">${live ? clubChip(c.club_id) : `<span class="chip off">${esc(from)}</span>`}<span class="meta">${certDay(c.issued_on)}</span></div>
+      <h3>${esc(c.title)}</h3>
+      ${c.award ? `<p class="award">${esc(c.award)}</p>` : ""}
+      ${c.event_title && c.event_title !== c.title ? `<p class="meta">For ${esc(c.event_title)}</p>` : ""}
+      <span class="verified">${VERIFIED_ICON}Verified by ${esc(from)}</span>
+      ${fileBtn ? `<div class="row">${fileBtn}</div>` : ""}
+    </article>`;
+  }
+  return `<article class="card cert">
+    <div class="row between"><span class="chip off">Added by you</span><span class="meta">${certDay(c.issued_on)}</span></div>
+    <h3>${esc(c.title)}</h3>
+    ${c.issuer ? `<p class="meta">From ${esc(c.issuer)}</p>` : ""}
+    <div class="row">
+      ${fileBtn}
+      ${c.credential_url ? `<a class="btn quiet small" href="${esc(c.credential_url)}" target="_blank" rel="noopener">Check online ›</a>` : ""}
+      <button class="btn quiet small" data-act="ask-delete-cert" data-id="${c.id}">Remove</button>
+    </div>
+  </article>`;
+}
+function myCertsHtml() {
+  if (!S.v8) {
+    return `<div class="empty"><p>${S.isAdmin
+      ? "To store certificates, run database update 8 (certificates) in Supabase. Until then, students can still browse the free certificates."
+      : "Saving certificates is switched on soon. Meanwhile, see which free certificates you can get."}</p>
+      <button class="btn" data-act="cert-view" data-view="free">Get free certs</button></div>`;
+  }
+  const club = S.certs.filter((c) => c.source === "club"), own = S.certs.filter((c) => c.source !== "club");
+  return `<div class="stats">
+      <div class="stat"><b>${club.length}</b><span>Verified by clubs</span></div>
+      <div class="stat"><b>${own.length}</b><span>Added by you</span></div>
+    </div>
+    <section class="stack" aria-labelledby="h-club-certs">
+      <h2 id="h-club-certs">From Monash clubs</h2>
+      ${club.length ? club.map(certCard).join("")
+        : `<p class="meta">When a club gives you a certificate for a competition or event you signed up for, it appears here by itself, marked as verified.</p>`}
+    </section>
+    <section class="stack" aria-labelledby="h-own-certs">
+      <div class="row between"><h2 id="h-own-certs">From outside Monash</h2>
+        <button class="btn small" data-act="add-cert">Add</button></div>
+      ${own.length ? own.map(certCard).join("")
+        : `<div class="empty"><p>Add certificates you've earned elsewhere, such as Bloomberg Market Concepts or a Forage job simulation.</p>
+            <button class="btn ghost" data-act="cert-view" data-view="free">See free ones to get</button></div>`}
+    </section>
+    ${S.certs.length ? `<button class="btn quiet wide" data-act="copy-certs">Copy my list for a resume</button>` : ""}`;
+}
+function freeCertsHtml() {
+  const order = [14, 5, 10, 18, 0, 12, 7, 3, 16];
+  const have = new Set(S.certs.map((c) => c.free_cert_key).filter(Boolean));
+  const card = (f) => {
+    const got = have.has(f.key);
+    const colour = CONFIG.CLUB_COLOURS[order[CONFIG.FREE_CERTS.indexOf(f) % order.length]][0];
+    return `<article class="card">
+      <div class="free-head">${certTile(f.short, colour)}
+        <div class="grow"><h3>${esc(f.name)}</h3><p class="meta">${esc(f.issuer)}</p></div></div>
+      ${certFits(f) ? `<div class="row"><span class="chip fit">Fits your studies</span></div>` : ""}
+      <p>${esc(f.what)}</p>
+      <p class="meta"><strong>Why it helps:</strong> ${esc(f.why)}</p>
+      <div class="row">
+        <a class="btn ghost small" href="${esc(f.url)}" target="_blank" rel="noopener">Open ›</a>
+        ${!S.v8 ? "" : got ? `<span class="chip mark">On your list</span>`
+          : `<button class="btn small" data-act="add-cert" data-key="${esc(f.key)}">I've got it</button>`}
+      </div>
+    </article>`;
+  };
+  const sorted = (list) => [...list].sort((a, b) => certFits(b) - certFits(a));
+  const monash = sorted(CONFIG.FREE_CERTS.filter((f) => f.access === "monash"));
+  const anyone = sorted(CONFIG.FREE_CERTS.filter((f) => f.access !== "monash"));
+  return `<p class="lead">Free certificates worth having.${S.v8 ? " Get one, then tap “I've got it” to keep it on your list." : ""}</p>
+    ${monash.length ? `<section class="stack" aria-labelledby="h-free-monash"><h2 id="h-free-monash">With your Monash email</h2>
+      <p class="meta">Sign up with your student email, or prove you're a student, to get these free.</p>${monash.map(card).join("")}</section>` : ""}
+    ${anyone.length ? `<section class="stack" aria-labelledby="h-free-all"><h2 id="h-free-all">Free for everyone</h2>${anyone.map(card).join("")}</section>` : ""}`;
+}
+function viewCerts() {
+  const n = S.certs.length;
+  return `<div class="stack"><h1>Certificates</h1>
+      <p class="lead">Everything you've earned, in one place for your resume.</p></div>
+    <div class="seg" role="group" aria-label="Which certificates to show">
+      <button data-act="cert-view" data-view="mine" aria-pressed="${S.certView === "mine"}">My certificates${S.v8 ? ` (${n})` : ""}</button>
+      <button data-act="cert-view" data-view="free" aria-pressed="${S.certView === "free"}">Get free certs</button>
+    </div>
+    ${S.certView === "free" ? freeCertsHtml() : myCertsHtml()}`;
+}
+
+// Committee: give certificates to the students who signed up for an event.
+function viewGiveCerts() {
+  const m = S.manage, a = (m.posts || []).find((x) => x.id === m.certFor) || {};
+  const club = clubName(m.clubId);
+  const back = `<button class="link" style="align-self:flex-start" data-act="give-back">Back to ${esc(club)}</button>`;
+  if (m.certSignups === null) return `${back}<h1>Certificates</h1><div class="meta">Loading…</div>`;
+  const nameOf = (s) => s ? esc(s.first_name) + " " + esc(s.last_name) : "Student";
+  const people = m.certSignups.filter((r) => r.status !== "rejected" && r.students);
+  const has = {};
+  for (const c of m.certGiven || []) (has[c.student_id] ||= []).push(c);
+  const given = (m.certGiven || []).map((c) => {
+    const r = m.certSignups.find((x) => x.student_id === c.student_id);
+    return `<div class="given"><div class="grow"><strong>${nameOf(r && r.students)}</strong>
+        <div class="meta">${esc(c.award || "Certificate")}${c.file_path ? " · with file" : ""}</div></div>
+      <button class="btn danger small" data-act="ask-revoke-cert" data-id="${c.id}">Remove</button></div>`;
+  }).join("");
+  const pick = people.map((r, i) => {
+    const s = r.students, held = (has[r.student_id] || []).map((c) => c.award || "Certificate");
+    return `<label class="check" for="gc-${i}"><input type="checkbox" name="to" value="${esc(r.student_id)}" id="gc-${i}" ${r.status === "pending" ? "" : "checked"}>
+      <span class="grow">${nameOf(s)} <small>Student ID ${esc(s.student_id)}${r.status === "pending" ? " · payment being checked" : ""}${held.length ? " · has: " + esc(held.join(", ")) : ""}</small></span></label>`;
+  }).join("");
+  return `${back}
+    <div class="stack"><h1>Certificates for ${esc(a.title || "this event")}</h1>
+      <p class="lead">Each student gets it in their Certificates tab, marked “Verified by ${esc(club)}”. Only students who signed up can get one.</p></div>
+    ${m.certError ? `<div class="error" role="alert">${esc(m.certError)}</div>` : ""}
+    ${given ? `<div class="stack"><h2>Already given (${m.certGiven.length})</h2><div class="card">${given}</div></div>` : ""}
+    <div class="stack"><h2>Give certificates</h2>
+    ${!people.length ? `<div class="empty"><p>Nobody has signed up for this event, so there's no one to give a certificate to.</p></div>`
+      : `<form data-form="give-certs" novalidate class="card">
+        <label>Certificate name<input name="title" id="gc-title" maxlength="160" value="${esc(a.title || "")}" required></label>
+        <label>Award <small>Give everyone “Participant” first, then give winners a second certificate with their place.</small>
+          <input name="award" id="gc-award" list="gc-awards" maxlength="80" value="Participant" autocomplete="off"></label>
+        <datalist id="gc-awards">${CONFIG.CERT_AWARDS.map((w) => `<option value="${esc(w)}">`).join("")}</datalist>
+        <label>Date on the certificate<input type="date" name="issued_on" id="gc-date" value="${a.event_start ? isoLocalDay(a.event_start) : isoToday()}" required></label>
+        <label>Certificate file <small>Optional. One PDF or picture that everyone ticked gets, such as your certificate design. Up to 10 MB.</small>
+          <input type="file" id="gc-file" accept="application/pdf,image/*"></label>
+        <p class="meta" id="gc-file-note">${m.certFile ? esc(m.certFile.name) + " is ready." : ""}</p>
+        <fieldset class="aud"><legend>Who gets it</legend>
+          <label class="check"><input type="checkbox" id="gc-all" checked> Everyone below</label>
+          <div class="pick">${pick}</div>
+        </fieldset>
+        <div id="gc-error"></div>
+        <button class="btn">Give certificates</button>
+      </form>`}
+    </div>`;
+}
+
 function viewProfile() {
   const p = S.profile;
   if (S.editing) {
@@ -1501,6 +1749,40 @@ function viewSheet() {
     body = `<h2>${esc(s.name)}</h2>
       ${s.url ? `<img class="shot" src="${s.url}" alt="Payment screenshot from ${esc(s.name)}">`
         : `<p class="meta">${s.failed ? "The screenshot couldn't be loaded." : "Loading screenshot…"}</p>`}`;
+  } else if (s.type === "add-cert") {
+    const f = s.key ? freeCert(s.key) : null, d = s.draft || {};
+    const v = (k, fallback = "") => esc(d[k] ?? fallback);
+    body = `<h2>${f ? "Add " + esc(f.name) : "Add a certificate"}</h2>
+      <form data-form="add-cert" novalidate>
+        <input type="hidden" name="free_cert_key" value="${esc(s.key || "")}">
+        <label>Certificate name<input name="title" id="ac-title" maxlength="160" required value="${v("title", f ? f.name : "")}" placeholder="e.g. Bloomberg Market Concepts"></label>
+        <label>Given by<input name="issuer" id="ac-issuer" maxlength="120" value="${v("issuer", f ? f.issuer : "")}" placeholder="e.g. Bloomberg" autocomplete="off"></label>
+        <label>Date you got it<input type="date" name="issued_on" id="ac-date" value="${v("issued_on", isoToday())}" max="${isoToday()}" required></label>
+        <label>Certificate file <small>A PDF, or a photo or screenshot of it. Optional, but it's what employers will want to see. Up to 10 MB.</small>
+          <input type="file" id="ac-file" accept="application/pdf,image/*"></label>
+        <p class="meta" id="ac-file-note">${s.file ? esc(s.file.name) + " is ready." : ""}</p>
+        <label>Link to check it online <small>Optional, such as a Credly badge or verification page.</small>
+          <input name="credential_url" id="ac-url" type="url" inputmode="url" placeholder="https://" autocomplete="off" value="${v("credential_url")}"></label>
+        ${err}
+        <button class="btn wide">Save certificate</button>
+      </form>`;
+  } else if (s.type === "cert-file") {
+    close = "Close";
+    body = `<h2>${esc(s.title)}</h2>
+      ${s.failed ? `<p class="meta">The certificate couldn't be opened. Try again in a moment.</p>`
+        : !s.url ? `<p class="meta">Opening…</p>`
+        : s.pdf ? `<a class="btn wide" href="${s.url}" target="_blank" rel="noopener">Open PDF</a>`
+        : `<img class="shot" src="${s.url}" alt="Certificate: ${esc(s.title)}">`}
+      ${s.url ? `<a class="btn quiet wide" href="${s.url}" download="${esc(s.download)}">Download</a>` : ""}`;
+  } else if (s.type === "delete-cert") {
+    const c = S.certs.find((x) => x.id === s.id) || {};
+    body = `<h2>Remove ${c.title ? "“" + esc(c.title) + "”" : "this certificate"}?</h2>
+      <p class="lead">It comes off your list and its file is deleted. You can add it again later.</p>
+      ${err}<button class="btn danger wide" data-act="delete-cert" data-id="${s.id}">Remove</button>`;
+  } else if (s.type === "revoke-cert") {
+    body = `<h2>Remove this certificate from ${esc(s.name)}?</h2>
+      <p class="lead">It disappears from their Certificates tab. You can give it again later.</p>
+      ${err}<button class="btn danger wide" data-act="revoke-cert" data-id="${s.id}">Remove</button>`;
   } else if (s.type === "password") {
     body = `<h2>Change your password</h2>${newPasswordForm(err)}`;
   } else if (s.type === "reject") {
@@ -1554,11 +1836,12 @@ function render() {
   if (S.committee.length) tabs.push(["manage", waiting ? `Manage (${waiting})` : "Manage"]);
   if (S.isAdmin) tabs.push(["admin", "Admin"]);
   tabs.push(["perks", "Perks"]);
+  tabs.push(["certs", "Certs"]);
   tabs.push(["profile", "Profile"]);
-  const view = { home: S.pay ? viewPay : S.post ? viewPost : viewHome, clubs: S.pay ? viewPay : viewClubs, post: viewPostTab, manage: viewManage, admin: viewAdmin, perks: viewPerks, profile: viewProfile }[S.tab]();
+  const view = { home: S.pay ? viewPay : S.post ? viewPost : viewHome, clubs: S.pay ? viewPay : viewClubs, post: viewPostTab, manage: viewManage, admin: viewAdmin, perks: viewPerks, certs: viewCerts, profile: viewProfile }[S.tab]();
   app.innerHTML = `<header class="topbar">${brand}<span class="who">${esc(S.profile.email)}</span></header>
     <main>${view}</main>
-    <nav class="tabs${tabs.length > 5 ? " many" : ""}" aria-label="Sections"><div>${tabs.map(([k, l]) =>
+    <nav class="tabs${tabs.length > 5 ? " many" : ""}${tabs.length > 6 ? " lots" : ""}" aria-label="Sections"><div>${tabs.map(([k, l]) =>
       `<button data-act="tab" data-tab="${k}" ${S.tab === k ? 'aria-current="page"' : ""}>${l}</button>`).join("")}</div></nav>`;
   overlay.innerHTML = viewSheet();
   afterRender();
@@ -1623,6 +1906,40 @@ async function openPay(clubId, postId = null) {
     : imageUrl("club-qr", c.pay_qr_path).then((url) => { pay.qrUrl = url; }, () => { pay.qrFailed = true; }).then(show);
   await Promise.all([getRef, getQr]);
 }
+// Certificates are PDFs or pictures. Pictures are shrunk a little; PDFs go up as they are.
+const CERT_MAX = 10 * 1024 * 1024;
+async function prepareCertFile(file) {
+  if (!file) return null;
+  if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) {
+    if (file.size > CERT_MAX) throw new Error("That PDF is over 10 MB. Try a smaller copy.");
+    return { blob: file, ext: "pdf", type: "application/pdf", name: file.name };
+  }
+  if (/^image\//.test(file.type)) {
+    const blob = await shrinkImage(file, 2400, 0.9);
+    return { blob, ext: "jpg", type: "image/jpeg", name: file.name };
+  }
+  throw new Error("Choose a PDF, or a photo or screenshot of the certificate.");
+}
+async function uploadCertFile(folder, f) {
+  const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${f.ext}`;
+  const up = await sb.storage.from("certificates").upload(path, f.blob, { contentType: f.type });
+  if (up.error) throw new Error(/mime type|exceeded the maximum|too large/i.test(up.error.message) ? "Use a PDF, JPG or PNG under 10 MB." : friendly(up.error));
+  return path;
+}
+async function openGiveCerts(postId) {
+  const m = S.manage;
+  Object.assign(m, { certFor: postId, certSignups: null, certGiven: null, certFile: null, certError: "" });
+  render(); window.scrollTo(0, 0);
+  const [e, c] = await Promise.all([
+    sb.from("event_signups").select("*, students(*)").eq("announcement_id", postId).order("signed_up_at"),
+    sb.from("certificates").select("*").eq("announcement_id", postId).eq("source", "club").order("id")
+  ]);
+  if (S.manage !== m || m.certFor !== postId) return;
+  m.certError = e.error || c.error ? friendly(e.error || c.error) : "";
+  m.certSignups = e.data || []; m.certGiven = c.data || [];
+  render();
+}
+
 function goTab(tab) {
   S.tab = tab; S.editing = false; S.formError = ""; S.pay = null; S.post = null; S.postFiles = []; S.postClub = null;
   if (tab === "manage") {
@@ -1631,6 +1948,7 @@ function goTab(tab) {
     S.manage = emptyManage();
   }
   if (tab === "admin") { render(); loadData().then(loadAdmin).catch((e) => toast(friendly(e))); return; }
+  if (tab === "certs" && S.v8) loadCerts().then(() => { if (S.tab === "certs" && !S.sheet) render(); }).catch(() => {});
   render(); window.scrollTo(0, 0);
   // Pick up anything that changed since the page was opened (new clubs, fees, announcements).
   if (tab === "home" || tab === "clubs") {
@@ -1649,6 +1967,45 @@ const actions = {
   "logout": async (d, btn) => busy(btn, async () => { await sb.auth.signOut(); }),
   "club-filter": (d) => { S.clubFilter = d.filter; render(); },
   "perk-group": (d) => { S.perkGroup = d.group; S.perkSearch = ""; render(); },
+  "cert-view": (d) => { S.tab = "certs"; S.certView = d.view; render(); window.scrollTo(0, 0); },
+  "add-cert": (d) => { S.sheet = { type: "add-cert", key: d.key || "", file: null }; renderSheet(); },
+  "view-cert": async (d) => {
+    const id = Number(d.id);
+    const c = S.certs.find((x) => x.id === id);
+    if (!c || !c.file_path) return;
+    const pdf = /\.pdf$/i.test(c.file_path);
+    const sheet = { type: "cert-file", title: c.title, pdf, url: "", failed: false,
+      download: (c.title.replace(/[^\w\- ]+/g, "").trim().slice(0, 60) || "certificate") + (pdf ? ".pdf" : ".jpg") };
+    S.sheet = sheet; renderSheet();
+    try { sheet.url = await imageUrl("certificates", c.file_path); } catch (e) { sheet.failed = true; }
+    if (S.sheet === sheet) renderSheet();
+  },
+  "ask-delete-cert": (d) => { S.sheet = { type: "delete-cert", id: Number(d.id) }; renderSheet(); },
+  "delete-cert": (d, btn) => busy(btn, async () => {
+    const id = Number(d.id), c = S.certs.find((x) => x.id === id) || {};
+    const { error } = await sb.from("certificates").delete().eq("id", id);
+    if (error) { S.sheet.error = friendly(error); renderSheet(); return; }
+    if (c.file_path && c.file_path.startsWith(S.user.id + "/")) await sb.storage.from("certificates").remove([c.file_path]).catch(() => {});
+    S.sheet = null; await loadCerts(); render(); toast("Certificate removed");
+  }),
+  "copy-certs": () => {
+    const line = (c) => (c.source === "club"
+      ? `${c.title}${c.award ? " – " + c.award : ""}, ${c.club_name || "Monash club"}, Monash University (${certMonth(c.issued_on)})`
+      : `${c.title}${c.issuer ? ", " + c.issuer : ""} (${certMonth(c.issued_on)})`);
+    return copyText(S.certs.map(line).join("\n"), "Copied. Paste it into your resume.");
+  },
+  "give-certs": (d) => openGiveCerts(Number(d.id)),
+  "give-back": () => { Object.assign(S.manage, { certFor: null, certSignups: null, certGiven: null, certFile: null, certError: "" }); render(); window.scrollTo(0, 0); },
+  "ask-revoke-cert": (d) => {
+    const c = (S.manage.certGiven || []).find((x) => x.id === Number(d.id)) || {};
+    const r = (S.manage.certSignups || []).find((x) => x.student_id === c.student_id);
+    S.sheet = { type: "revoke-cert", id: Number(d.id), name: r && r.students ? r.students.first_name : "this student" }; renderSheet();
+  },
+  "revoke-cert": (d, btn) => busy(btn, async () => {
+    const { error } = await sb.from("certificates").delete().eq("id", Number(d.id));
+    if (error) { S.sheet.error = friendly(error); renderSheet(); return; }
+    S.sheet = null; await openGiveCerts(S.manage.certFor); toast("Certificate removed");
+  }),
   "ask-join": (d) => {
     const id = Number(d.club);
     const c = S.clubs.find((x) => x.id === id);
@@ -1917,6 +2274,45 @@ const forms = {
     render(); window.scrollTo(0, 0);
     toast((row.audience_all ? "Posted to all students" : "Posted") + " for " + clubName(clubId));
   },
+  "add-cert": async (f) => {
+    const sheet = S.sheet;
+    const fail = (msg) => { if (S.sheet === sheet) { sheet.error = msg; sheet.draft = f; renderSheet(); } };
+    const title = (f.title || "").trim(), url = (f.credential_url || "").trim();
+    if (!title) return fail("Write the certificate's name.");
+    if (!f.issued_on) return fail("Add the date you got it.");
+    if (f.issued_on > isoToday()) return fail("The date can't be in the future.");
+    if (url && !/^https?:\/\/\S+\.\S+/i.test(url)) return fail("The link should start with https://");
+    let path = null;
+    if (sheet.file) { try { path = await uploadCertFile(S.user.id, sheet.file); } catch (e) { return fail(e.message); } }
+    const { error } = await sb.from("certificates").insert({
+      student_id: S.user.id, source: "outside", title, issuer: (f.issuer || "").trim() || null, issued_on: f.issued_on,
+      file_path: path, credential_url: url || null, free_cert_key: f.free_cert_key || null });
+    if (error) { if (path) sb.storage.from("certificates").remove([path]).catch(() => {}); return fail(friendly(error)); }
+    S.sheet = null; S.certView = "mine"; S.tab = "certs"; await loadCerts(); render(); window.scrollTo(0, 0); toast("Certificate saved");
+  },
+  "give-certs": async (f, form) => {
+    const m = S.manage, post = m.certFor, clubId = m.clubId;
+    const fail = (msg) => { const el = document.getElementById("gc-error"); if (el) el.innerHTML = `<div class="error" role="alert">${esc(msg)}</div>`; else toast(msg); };
+    const title = (f.title || "").trim(), award = (f.award || "").trim() || null;
+    if (!title) return fail("Give the certificate a name.");
+    if (!f.issued_on) return fail("Add the date on the certificate.");
+    const to = [...form.querySelectorAll("input[name=to]:checked")].map((b) => b.value);
+    if (!to.length) return fail("Tick at least one student.");
+    // Skip students who already have this award for this event.
+    const same = (c) => (c.award || "").toLowerCase() === (award || "").toLowerCase();
+    const already = new Set((m.certGiven || []).filter(same).map((c) => c.student_id));
+    const fresh = to.filter((sid) => !already.has(sid));
+    if (!fresh.length) return fail(`Everyone ticked already has “${award || "this certificate"}” for this event.`);
+    let path = null;
+    if (m.certFile) { try { path = await uploadCertFile("club-" + clubId, m.certFile); } catch (e) { return fail(e.message); } }
+    const rows = fresh.map((sid) => ({ student_id: sid, source: "club", club_id: clubId, announcement_id: post,
+      title, award, issued_on: f.issued_on, file_path: path }));
+    const { error } = await sb.from("certificates").insert(rows);
+    if (error) { if (path) sb.storage.from("certificates").remove([path]).catch(() => {}); return fail(friendly(error)); }
+    const skipped = to.length - fresh.length;
+    await openGiveCerts(post);
+    toast(`Given to ${fresh.length} student${fresh.length === 1 ? "" : "s"}` + (skipped ? ` · ${skipped} already had it` : ""));
+  },
   "pay": async () => {
     const p = S.pay, clubId = p.clubId, uid = S.user.id;
     const fail = (msg) => { p.error = msg; if (S.pay === p) render(); };
@@ -2064,6 +2460,18 @@ document.addEventListener("change", async (e) => {
     byId("a-thumbs").innerHTML = S.postFiles.map((f) => `<img src="${f.url}" alt="Chosen picture">`).join("");
   }
   if (el.id === "a-aud-all") document.querySelectorAll("input[name=aud_school]").forEach((b) => { b.disabled = el.checked; if (el.checked) b.checked = false; });
+  if (el.id === "ac-file" && S.sheet && S.sheet.type === "add-cert") {
+    const sheet = S.sheet, note = byId("ac-file-note");
+    try { sheet.file = await prepareCertFile(el.files[0]); sheet.error = ""; if (note) note.textContent = sheet.file ? sheet.file.name + " is ready." : ""; }
+    catch (err) { sheet.file = null; el.value = ""; if (note) { note.textContent = err.message; note.setAttribute("role", "alert"); } }
+  }
+  if (el.id === "gc-file") {
+    const m = S.manage, note = byId("gc-file-note");
+    try { m.certFile = await prepareCertFile(el.files[0]); if (note) note.textContent = m.certFile ? m.certFile.name + " is ready." : ""; }
+    catch (err) { m.certFile = null; el.value = ""; if (note) { note.textContent = err.message; note.setAttribute("role", "alert"); } }
+  }
+  if (el.id === "gc-all") document.querySelectorAll("input[name=to]").forEach((b) => { b.checked = el.checked; });
+  if (el.name === "to") { const all = byId("gc-all"), boxes = [...document.querySelectorAll("input[name=to]")]; if (all) all.checked = boxes.every((b) => b.checked); }
   if (el.id === "pay-file" && S.pay) {
     const p = S.pay;
     try { p.file = await shrinkImage(el.files[0], 1400, 0.82); p.preview = URL.createObjectURL(p.file); p.error = ""; }
