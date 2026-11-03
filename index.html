@@ -885,6 +885,18 @@ form.aform input:not([type=checkbox]):not([type=radio]), form.aform select { bac
   .phead .crew .b2 { margin-left: -28px; }
   .phead .mascot { width: auto; }
 }
+
+/* Phone bar: tools live in Profile; Certs gets a short label */
+.tabs .tab .long { display: none; }
+@media (max-width: 899px) {
+  .tabs .tab.tool { display: none; }
+  .tabs .tablist .tab[data-tab="profile"], .tabs.lots .tablist .tab[data-tab="profile"] { display: flex; }
+  .tabs.many button.tab { font-size: .7rem; }
+}
+@media (min-width: 900px) {
+  .tabs .tab .short { display: none; } .tabs .tab .long { display: inline; }
+  .tools-menu { display: none; }
+}
 </style>
 </head>
 <body>
@@ -2600,10 +2612,13 @@ function viewProfile() {
       <button class="btn small ghost" data-act="edit">Edit Profile</button></div>
     <div class="card menu">
       ${mrow("clubs", "My Clubs", plural(nClubs, "club"), "my-clubs", "#E0436B")}
-      ${mrow("events", "My Events", upcoming + " upcoming", "my-events", "#E0436B")}
-      ${mrow("doc", "My Certificates", S.v8 ? plural(nCerts, "certificate") : "", "my-certs", "#E0436B")}
       ${mrow("perks", "My Saved Perks", nSaved + " saved", "my-perks", "#D9A000")}
     </div>
+    ${S.committee.length || S.isAdmin ? `<section class="stack tools-menu" aria-labelledby="h-tools"><h2 id="h-tools">Committee tools</h2><div class="card menu">
+      ${mrow("post", "Post an announcement or event", "", "go-tool\" data-tab=\"post", "#1F5BC4")}
+      ${S.committee.length ? mrow("manage", "Manage my club", (() => { const w = Object.values(S.toCheck).reduce((a, b) => a + b, 0); return w ? `<span class="chip bad">${w} to check</span>` : ""; })(), "go-tool\" data-tab=\"manage", "#1F5BC4") : ""}
+      ${S.isAdmin ? mrow("admin", "Admin", "", "go-tool\" data-tab=\"admin", "#1F5BC4") : ""}
+    </div></section>` : ""}
     <div class="card menu">
       ${mrow("gear", "Settings", "", "settings", "#5B6576")}
       ${mrow("help", "Help & Support", "", "help", "#5B6576")}
@@ -2799,25 +2814,28 @@ function render() {
   if (S.phase === "auth") { app.className = "shell bare" + (S.authView === "welcome" ? " welcome-on" : ""); app.innerHTML = (S.authView === "welcome" ? "" : `<header class="topbar">${brand}</header>`) + viewAuth(); overlay.innerHTML = ""; return; }
   if (S.phase === "profile") { app.className = "shell bare"; app.innerHTML = `<header class="topbar">${brand}</header>${viewProfileSetup()}`; overlay.innerHTML = ""; return; }
 
-  const tabs = [["home", "Home"], ["clubs", "Clubs"], ["events", "Events"], ["perks", "Perks"]];
+  // Phone: Home, Clubs, Events, Perks, Certs, Profile. Committee tools (Post, Manage, Admin) live in Profile on a phone
+  // and in the sidebar on a computer.
+  const tabs = [["home", "Home"], ["clubs", "Clubs"], ["events", "Events"], ["perks", "Perks"], ["certs", "Certs"]];
   const waiting = Object.values(S.toCheck).reduce((a, b) => a + b, 0);
   if (S.committee.length || S.isAdmin) tabs.push(["post", "Post"]);
   if (S.committee.length) tabs.push(["manage", waiting ? `Manage (${waiting})` : "Manage"]);
   if (S.isAdmin) tabs.push(["admin", "Admin"]);
-  tabs.push(["profile", "Profile"]);
+  tabs.push(["profile", waiting ? `Profile (${waiting})` : "Profile"]);
+  const TOOLS = ["post", "manage", "admin"];
   const view = (S.pay ? viewPay : S.post ? viewPost : { home: viewHome, clubs: viewClubs, events: viewEvents, post: viewPostTab, manage: viewManage, admin: viewAdmin, perks: viewPerks, certs: viewCerts, profile: viewProfile }[S.tab])();
   const onHero = false;
-  const cur = (k) => S.tab === k || (k === "profile" && S.tab === "certs");
+  const cur = (k) => S.tab === k || (k === "profile" && TOOLS.includes(S.tab));
   const meIni = ((S.profile.first_name || "")[0] || "") + ((S.profile.last_name || "")[0] || "");
   const narrow = S.pay || S.post || S.tab === "post" || (S.tab === "profile" && (S.editing || S.profileView === "settings")) || (S.tab === "clubs" && S.clubPage != null);
   app.className = "shell";
   app.innerHTML = `<header class="topbar${onHero ? " hero-mode on-hero" : ""}">${brand}<button class="me" data-act="tab" data-tab="profile" aria-label="Your profile, ${esc(S.profile.email)}">${esc(meIni.toUpperCase() || "ME")}</button></header>
     <main${narrow ? ' class="narrow"' : ""}>${view}</main>
-    <nav class="tabs${tabs.length > 5 ? " many" : ""}${tabs.length > 6 ? " lots" : ""}" aria-label="Sections">
+    <nav class="tabs many" aria-label="Sections">
       <div class="side-brand">${brand}</div>
       <div class="tablist">${tabs.map(([k, l]) => {
       const m = /^(.*) \((\d+)\)$/.exec(l); const label = m ? m[1] : l;
-      return `<button class="tab" data-act="tab" data-tab="${k}" ${cur(k) ? 'aria-current="page"' : ""}>${icon(k)}<span>${label}</span>${m ? `<i class="badge">${m[2]}</i>` : ""}</button>`; }).join("")}</div>
+      return `<button class="tab${TOOLS.includes(k) ? " tool" : ""}" data-act="tab" data-tab="${k}" ${cur(k) ? 'aria-current="page"' : ""}>${icon(k)}<span>${k === "certs" ? '<span class="short">Certs</span><span class="long">Certificates</span>' : label}</span>${m ? `<i class="badge">${m[2]}</i>` : ""}</button>`; }).join("")}</div>
       <button class="side-me" data-act="tab" data-tab="profile" ${cur("profile") ? 'aria-current="page"' : ""}><span class="me" aria-hidden="true">${esc(meIni.toUpperCase() || "ME")}</span>
         <span><b>${esc(S.profile.first_name)} ${esc(S.profile.last_name)}</b><small>${esc(S.profile.email)}</small></span></button>
     </nav>`;
@@ -3018,6 +3036,7 @@ const actions = {
   "settings-back": () => { S.profileView = null; render(); window.scrollTo(0, 0); },
   "my-clubs": () => { goTab("clubs"); S.clubFilter = "mine"; render(); window.scrollTo(0, 0); },
   "my-events": () => { goTab("events"); S.evView = "mine"; render(); window.scrollTo(0, 0); },
+  "go-tool": (d) => { goTab(d.tab); render(); window.scrollTo(0, 0); },
   "my-certs": () => { goTab("certs"); S.certView = "mine"; render(); window.scrollTo(0, 0); },
   "my-perks": () => { goTab("perks"); S.perkGroup = savedPerks().size ? "Saved" : "All"; render(); window.scrollTo(0, 0); },
   "save-perk": (d) => {
