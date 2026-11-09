@@ -1317,7 +1317,7 @@ async function loadData() {
     S.invites = iv.data || [];
     S.myGroups = new Map((gr.data || []).map((g) => [g.club_id, g]));
   }
-  const visible = new Set([...activeIds(), ...k.data.map((r) => r.club_id)]);
+  const visible = new Set([...activeIds(), ...k.data.map((r) => r.club_id), ...S.clubs.filter(isOfficial).map((c) => c.id)]);
   const school = S.profile && S.profile.school;
   S.feed = f.data.filter((r) => visible.has(r.club_id) || r.audience_all || (!!school && (r.audience_schools || []).includes(school)))
     .filter((r) => !eventOver(r));                       // finished events leave Home by themselves
@@ -1592,6 +1592,8 @@ function clubRow(c, why) {
     return `<button class="lrow" data-act="open-club" data-club="${c.id}"><span class="thumb">${clubThumb(c)}</span>
       <span class="grow"><b>${esc(c.name)}</b><span class="meta">${esc(why)}</span><span class="meta">${esc(line2)}</span></span>${icon("chev")}</button>`;
   }
+  if (isOfficial(c)) return `<div class="lrow has-act"><button class="lrow-main" data-act="open-club" data-club="${c.id}"><span class="thumb">${clubThumb(c)}</span>
+      <span class="grow"><b>${esc(c.name)}</b><span class="meta">Student association · Updates go to every student</span></span></button><span class="chip mark">For everyone</span></div>`;
   const m = my(c.id), st = m ? m.status : "";
   const action = st === "active" ? `<span class="chip mark">Joined</span>`
     : st === "pending" ? `<span class="chip">Checking</span>`
@@ -1748,6 +1750,8 @@ function myGroupCard(clubId) {
       <p class="note">A friend who hasn't made an account yet will see your invite after they sign up with that email.</p>
     </div></section>`;
 }
+// Official bodies (MUSA and its divisions): every student gets their posts without joining.
+const isOfficial = (c) => !!(c && c.is_official);
 const canTakePayment = (c) => !(Number(c.fee) > 0) || !!c.pay_account_number || !!c.pay_qr_path;
 const activeIds = () => [...S.mine.values()].filter((r) => r.status === "active").map((r) => r.club_id);
 const isCommittee = (id) => S.committee.some((c) => c.club_id === id);
@@ -1971,7 +1975,7 @@ function recommendedClubs() {
   const studies = [p.major, p.major2, p.minor, p.minor2].filter(Boolean);
   const skip = new Set(["school", "and", "the", "for", "studies", "with", "jeffrey", "cheah"]);
   const words = [...studies, p.school || ""].join(" ").toLowerCase().split(/[^a-z]+/).filter((w) => w.length >= 4 && !skip.has(w));
-  return S.clubs.filter((c) => c.is_active && !S.mine.has(c.id) && !isCommittee(c.id)).map((c) => {
+  return S.clubs.filter((c) => c.is_active && !isOfficial(c) && !S.mine.has(c.id) && !isCommittee(c.id)).map((c) => {
     const fm = c.fit_majors || [], fs = c.fit_schools || [];
     const hit = studies.find((s) => fm.includes(s));
     if (hit) return { c, score: 10, why: `Picked by the club for ${hit} students` };
@@ -2023,7 +2027,7 @@ function clubListHtml() {
       : S.clubFilter === "mine" && !q ? "You haven't joined any clubs yet." : "No clubs match that.";
     return `<div class="empty">${emptyArt(q ? "search" : "empty")}<p>${msg}</p></div>`;
   }
-  return list.sort((a, b) => a.name.localeCompare(b.name)).map((c) => clubRow(c)).join("");
+  return list.sort((a, b) => (isOfficial(b) - isOfficial(a)) || a.name.localeCompare(b.name)).map((c) => clubRow(c)).join("");
 }
 
 function viewPay() {
@@ -2086,6 +2090,7 @@ function viewPay() {
 
 // Join / leave buttons and status for one club (used on the club page).
 function clubBits(c) {
+  if (isOfficial(c)) return { chip: `<span class="chip mark">For everyone</span>`, buttons: "", fee: 0, official: true };
   const m = my(c.id), st = m ? m.status : "", fee = Number(c.fee) || 0;
   const chip = st === "active" ? `<span class="chip mark">Joined</span>`
     : st === "pending" ? `<span class="chip">Being checked</span>`
@@ -2113,7 +2118,7 @@ function viewClubPage() {
     <div class="stack" style="gap:6px"><span class="cat-label">${esc(c.category || "Club")}</span><h1>${esc(c.name)}</h1>
       ${c.description ? `<p class="lead">${esc(c.description)}</p>` : ""}</div>
     <div class="row">${b.buttons}${S.v6 && my(c.id) ? `<button class="btn quiet" data-act="pick-colour" data-club="${c.id}"><i class="sw-dot" style="background:${clubColour(c.id)}"></i>My colour</button>` : ""}${mine ? `<button class="btn ghost" data-act="manage" data-club="${c.id}" data-focus="club-page-edit">Edit page</button>` : ""}</div>
-    <p class="meta">${b.fee ? "Membership fee " + money(b.fee) : "Free to join"}${bundleOf(c) && !my(c.id) ? ` · or ${money(bundleOf(c).price)} for a group of ${bundleOf(c).size} (${eachPrice(bundleOf(c))} each)` : ""}</p>
+    <p class="meta">${b.official ? "Every Monash student gets these announcements automatically. There's nothing to join." : b.fee ? "Membership fee " + money(b.fee) : "Free to join"}${bundleOf(c) && !my(c.id) ? ` · or ${money(bundleOf(c).price)} for a group of ${bundleOf(c).size} (${eachPrice(bundleOf(c))} each)` : ""}</p>
     ${!my(c.id) && myInvite(c.id) ? inviteCard(myInvite(c.id)) : ""}
     ${myGroupCard(c.id)}
     ${c.about ? `<section class="stack" aria-labelledby="h-about"><h2 id="h-about">About us</h2><div class="card"><p class="post-body">${esc(c.about)}</p></div></section>` : ""}
@@ -3159,6 +3164,7 @@ const actions = {
   "ask-join": (d) => {
     const id = Number(d.club);
     const c = S.clubs.find((x) => x.id === id);
+    if (isOfficial(c)) return;                          // nothing to join: everyone gets their posts
     if (Number(c.fee) > 0 && bundleOf(c)) { S.sheet = { type: "join-how", clubId: id }; renderSheet(); return; }
     if (Number(c.fee) > 0) return openPay(id);          // clubs with a fee go to the payment page
     S.sheet = { type: "join", clubId: id }; renderSheet();
