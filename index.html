@@ -1149,7 +1149,7 @@ function friendly(err) {
   if (/mime type|exceeded the maximum|too large/i.test(m)) return "Use a JPG or PNG image under 5 MB.";
   if (code === "42501" || /row-level security/i.test(m)) return "You don't have permission to do that.";
   if (/Invalid login credentials/i.test(m)) return "Wrong email or password.";
-  if (/Email not confirmed/i.test(m)) return "Confirm your email first. Open the link we sent to your inbox, then log in.";
+  if (/Email not confirmed/i.test(m)) return "Confirm your email first. Enter the code we sent to your inbox.";
   if (/not authorized/i.test(m) && /email/i.test(m)) return "The confirmation email could not be sent to this address. The project's email sender is still in test mode.";
   if (/rate limit/i.test(m)) return "Too many emails were sent in the last hour. Wait a while and try again.";
   if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return "Can't reach the server. Check your internet connection and try again.";
@@ -1752,8 +1752,15 @@ function viewAuth() {
   if (S.authView === "check") {
     return `<main>
       <div class="ahead"><div class="stack"><h1>Check your email</h1>
-      <p class="lead">We sent a confirmation link to <strong>${esc(S.pendingEmail)}</strong>. Open it, then come back here and log in.</p></div>${art("events", "peek")}</div>
-      <button class="btn wide" data-act="auth-view" data-view="login">Go to log in</button>
+      <p class="lead">We sent a code to <strong>${esc(S.pendingEmail)}</strong>. Type it below to finish signing up.</p></div>${art("events", "peek")}</div>
+      ${err}
+      <form data-form="verify-code" novalidate class="aform">
+        <label>Code from your email
+          <input name="code" id="f-code" required inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="e.g. 123456" style="font:700 1.4rem var(--mono);letter-spacing:.3em;text-align:center"></label>
+        <button class="btn wide">Verify and continue</button>
+      </form>
+      <p class="meta">Nothing after a few minutes? Check your spam or junk folder, or <button class="link" data-act="resend-code">send a new code</button>.</p>
+      <p class="meta"><button class="link" data-act="auth-view" data-view="login">Back to log in</button></p>
     </main>`;
   }
   if (S.authView === "signup1") {
@@ -2973,6 +2980,11 @@ const actions = {
   "go-post": (d) => { goTab("post"); S.postClub = Number(d.club); render(); },
   "reload": () => location.reload(),
   "auth-view": (d) => { S.authView = d.view; S.authError = ""; render(); },
+  "resend-code": async (d, btn) => busy(btn, async () => {
+    const { error } = await sb.auth.resend({ type: "signup", email: S.pendingEmail });
+    if (error) { S.authError = friendly(error); render(); return; }
+    S.authError = ""; render(); toast("New code sent");
+  }),
   "logout": async (d, btn) => busy(btn, async () => { await sb.auth.signOut(); }),
   "club-filter": (d) => { S.clubFilter = d.filter; render(); },
   "perk-group": (d) => { S.perkGroup = d.group; S.perkSearch = ""; render(); },
@@ -3262,6 +3274,13 @@ const forms = {
       S.authError = "An account with this email already exists. Log in instead."; S.authView = "login"; S.draft = { email }; render(); return;
     }
     if (!data.session) { S.pendingEmail = email; S.authView = "check"; S.authError = ""; S.draft = { email }; render(); }
+  },
+  "verify-code": async (f) => {
+    const token = (f.code || "").replace(/\D/g, "");
+    if (token.length < 6) { S.authError = "Enter the code from your email."; render(); return; }
+    const { error } = await sb.auth.verifyOtp({ email: S.pendingEmail, token, type: "email" });
+    if (error) { S.authError = /expired|invalid/i.test(error.message) ? "That code is wrong or has expired. Check it, or send a new code." : friendly(error); render(); return; }
+    S.authError = "";
   },
   "profile-create": async (f) => {
     const row = profileRow(f); S.draft = row;
