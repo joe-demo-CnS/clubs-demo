@@ -431,6 +431,20 @@ label.check { flex-direction: row; align-items: center; gap: 10px; font-weight: 
 label.check input { width: 20px; height: 20px; min-height: 0; flex: none; margin: 0; accent-color: var(--accent); }
 fieldset.aud { border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; margin: 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 fieldset.aud legend { font-weight: 700; font-size: .88rem; padding: 0 6px; }
+fieldset.groupset { border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; margin: 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+fieldset.groupset legend { font-weight: 700; font-size: .88rem; padding: 0 6px; }
+/* Group join */
+.choice { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 12px; width: 100%; text-align: left; cursor: pointer;
+  padding: 14px 16px; border-radius: var(--r-card); border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; }
+.choice:hover { border-color: var(--accent); background: var(--soft); }
+.choice b { font: 700 1.02rem var(--display); }
+.choice small { grid-column: 1 / -1; color: var(--muted); font-size: .86rem; }
+.card.invite { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.glist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.glist li { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); min-width: 0; }
+.glist li:first-child { border-top: 0; }
+.glist li .grow { overflow-wrap: anywhere; font-size: .92rem; }
+.groupbox { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: var(--r); background: var(--sunk); }
 details.fit { border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; }
 details.fit summary { cursor: pointer; font-weight: 600; font-size: .92rem; }
 details.fit .stack { gap: 8px; margin-top: 8px; }
@@ -1230,6 +1244,8 @@ function checkProfile(p) {
   if (!p.student_id) return "Enter your Monash student ID.";
   if (!p.year) return "Choose your year.";
   if (!p.school) return "Choose your school.";
+  if (p.phone && !/^\+\d/.test(p.phone.replace(/\s/g, ""))) return "Start your phone number with its country code, e.g. +60 12-345 6789 for a Malaysian number.";
+  if (p.phone && p.phone.replace(/\D/g, "").length < 8) return "That phone number looks too short. Check it, including the country code.";
   if (p.year > 1 && !p.major && !p.minor) return "From Year 2 onwards, choose your major or a minor.";
   if (p.major2 && !p.major) return "Choose your first major before a second one.";
   if (p.major2 && p.major2 === p.major) return "Your second major is the same as your first.";
@@ -1291,6 +1307,16 @@ async function loadData() {
   }
   S.mine = new Map(m.data.map((r) => [r.club_id, r]));
   S.committee = k.data;
+  S.vG = S.clubs.length > 0 && "bundle_size" in S.clubs[0];          // group join (database update 11)
+  S.invites = []; S.myGroups = new Map();
+  if (S.vG) {
+    const [iv, gr] = await Promise.all([
+      sb.rpc("my_group_invites"),
+      sb.from("join_groups").select("*, join_group_invites(*)").eq("leader_id", uid)
+    ]);
+    S.invites = iv.data || [];
+    S.myGroups = new Map((gr.data || []).map((g) => [g.club_id, g]));
+  }
   const visible = new Set([...activeIds(), ...k.data.map((r) => r.club_id)]);
   const school = S.profile && S.profile.school;
   S.feed = f.data.filter((r) => visible.has(r.club_id) || r.audience_all || (!!school && (r.audience_schools || []).includes(school)))
@@ -1375,6 +1401,11 @@ async function loadManage(clubId) {
     club.pay_qr_path ? imageUrl("club-qr", club.pay_qr_path).catch(() => "") : ""
   ]);
   if (S.manage.clubId !== clubId) return;
+  if (S.vG) {
+    const g = await sb.from("join_groups").select("*, join_group_invites(*)").eq("club_id", clubId);
+    if (S.manage.clubId !== clubId) return;
+    S.manage.groups = new Map((g.data || []).map((x) => [x.leader_id, x]));
+  }
   if (m.error || p.error) S.manage.error = friendly(m.error || p.error);
   S.manage.members = (m.data || []).filter((r) => r.students);
   S.manage.posts = p.data || [];
@@ -1670,6 +1701,53 @@ function noticeHtml(a) {
     ${signupBlock(a)}
   </article>`;
 }
+// Group join: a club offers it when it has a fee and both group settings.
+const bundleOf = (c) => (S.vG && c && Number(c.fee) > 0 && Number(c.bundle_size) >= 2 && c.bundle_price != null)
+  ? { size: Number(c.bundle_size), price: Number(c.bundle_price) } : null;
+const eachPrice = (b) => money(Math.round((b.price / b.size) * 100) / 100);
+const myInvite = (clubId) => (S.invites || []).find((i) => i.club_id === clubId && i.status !== "declined" && i.paid_status !== "rejected") || null;
+const firstName = (full) => String(full || "").split(" ")[0];
+const GROUP_STATUS = { invited: ["Waiting for reply", ""], accepted: ["Accepted", "mark"], declined: ["Declined", "bad"] };
+function groupError(err) {
+  const m = String((err && err.message) || err || ""), v = m.split(":").slice(1).join(":");
+  if (/^group_size/.test(m)) return `Add ${v} friends' emails.`;
+  if (/^own_email/.test(m)) return "Use your friends' emails, not your own.";
+  if (/^bad_email/.test(m)) return `“${v}” isn't a valid email. Check it.`;
+  if (/^already_member/.test(m)) return `${v} is already a member of this club, or is waiting for approval. Add someone else.`;
+  if (/^already_invited/.test(m)) return `${v} is already in another group for this club. Add someone else.`;
+  if (/^already_joined/.test(m)) return "You've already joined this club or sent a payment for it.";
+  if (/^no_bundle/.test(m)) return "This club doesn't offer a group price at the moment.";
+  if (/^cannot_replace/.test(m)) return "That friend has already accepted, so they can't be swapped.";
+  if (/^invite_not_found/.test(m)) return "This group invite no longer exists. The person who invited you may have cancelled it.";
+  if (/^no_profile/.test(m)) return "Finish your profile first.";
+  return friendly(err);
+}
+// Invites from friends, shown on Home and on the club's page.
+function inviteCard(i) {
+  const name = esc(i.leader_name), club = esc(clubName(i.club_id));
+  if (i.status === "accepted") return `<div class="card invite"><div class="clubhead">${clubAva(i.club_id)}<b class="grow">${club}</b><span class="chip">In a group</span></div>
+      <p>You're in ${name}'s group. You'll become a member as soon as the committee checks ${esc(firstName(i.leader_name))}'s payment.</p>
+      <button class="link" style="align-self:flex-start" data-act="invite-no" data-group="${i.group_id}">Leave this group</button></div>`;
+  return `<div class="card invite"><div class="clubhead">${clubAva(i.club_id)}<b class="grow">${club}</b><span class="chip fit">Group invite</span></div>
+      <p><strong>${name}</strong> added you to a group of ${i.size} joining ${club} for ${money(i.price)} in total. ${esc(firstName(i.leader_name))} pays for everyone, so you don't pay anything.</p>
+      <p class="note">If you accept, the committee will see your name, student ID, year, school, major, minor, email and phone number.</p>
+      <div class="row"><button class="btn small" data-act="invite-yes" data-group="${i.group_id}">Accept</button>
+        <button class="btn quiet small" data-act="invite-no" data-group="${i.group_id}">Decline</button></div></div>`;
+}
+// The leader's view of their group.
+function myGroupCard(clubId) {
+  const g = S.myGroups && S.myGroups.get(clubId), m = my(clubId);
+  if (!g || !m) return "";
+  const list = (g.join_group_invites || []).sort((a, b) => a.email.localeCompare(b.email));
+  const done = m.status === "active";
+  return `<section class="stack" aria-labelledby="h-group"><h2 id="h-group">Your group</h2><div class="card">
+      <p class="meta">You paid ${money(g.price)} for ${g.size} people. ${done ? "Friends who accept now join straight away." : "Friends who accept join once the committee approves your payment."}</p>
+      <ul class="glist">${list.map((i) => { const [t, cls] = GROUP_STATUS[i.status] || ["", ""];
+        return `<li><span class="grow">${esc(i.email)}</span><span class="chip ${cls}">${done && i.status === "accepted" ? "Joined" : t}</span>
+          ${i.status !== "accepted" ? `<button class="btn quiet small" data-act="ask-swap" data-group="${g.id}" data-email="${esc(i.email)}">Change</button>` : ""}</li>`; }).join("")}</ul>
+      <p class="note">A friend who hasn't made an account yet will see your invite after they sign up with that email.</p>
+    </div></section>`;
+}
 const canTakePayment = (c) => !(Number(c.fee) > 0) || !!c.pay_account_number || !!c.pay_qr_path;
 const activeIds = () => [...S.mine.values()].filter((r) => r.status === "active").map((r) => r.club_id);
 const isCommittee = (id) => S.committee.some((c) => c.club_id === id);
@@ -1722,8 +1800,8 @@ function profileFields(d, withPhoneNote = true) {
       </label>
     </div>
     ${courses}
-    <label>Phone number <small>Optional. ${withPhoneNote ? "Shared only with the committees of clubs you join." : ""}</small>
-      <input name="phone" id="f-phone" type="tel" value="${esc(d.phone ?? "")}" placeholder="e.g. 012-345 6789" autocomplete="tel">
+    <label>Phone number <small>Optional. Start with the country code your number is registered in, e.g. +60 for Malaysia, +62 for Indonesia, +86 for China. ${withPhoneNote ? "Shared only with the committees of clubs you join." : ""}</small>
+      <input name="phone" id="f-phone" type="tel" value="${esc(d.phone ?? "")}" placeholder="e.g. +60 12-345 6789" autocomplete="tel">
     </label>`;
 }
 
@@ -1865,6 +1943,12 @@ function viewHome() {
     </section>
     <div class="searchbox"><input type="search" id="home-search" placeholder="Search clubs, events, perks..." aria-label="Search clubs, events and perks" autocomplete="off">
       <div id="home-results" class="results" hidden></div></div>
+    ${(() => { const inv = (S.invites || []).filter((i) => i.status !== "declined" && i.paid_status !== "rejected" && !my(i.club_id));
+      const swaps = [...(S.myGroups || new Map()).values()].filter((g) => my(g.club_id) && (g.join_group_invites || []).some((i) => i.status === "declined"));
+      return inv.length || swaps.length ? `<section class="stack" aria-label="Group invites">${inv.map(inviteCard).join("")}
+        ${swaps.map((g) => `<div class="card invite"><div class="clubhead">${clubAva(g.club_id)}<b class="grow">${esc(clubName(g.club_id))}</b><span class="chip bad">Friend declined</span></div>
+          <p>Someone in your group declined. Add another friend so nobody's place goes to waste.</p>
+          <button class="btn small" style="align-self:flex-start" data-act="open-club" data-club="${g.club_id}">See your group</button></div>`).join("")}</section>` : ""; })()}
     <div class="home-cols">
       <div>
         <section class="promo"><div class="promo-text"><h2>Make the most of your Monash journey <span aria-hidden="true">✨</span></h2>
@@ -1952,6 +2036,9 @@ function viewPay() {
     ? `<button class="link" style="align-self:flex-start" data-act="pay-back">Back</button>
       <div class="stack"><div class="clubhead">${clubAva(c.id)}<b>${esc(c.name)}</b></div><h1>Sign up for ${esc(ev.title)}</h1>${eventLine(ev)}
         <p class="lead">Pay in your banking app, then upload a screenshot. Your place is confirmed once the committee has checked it.</p></div>`
+    : p.group ? `<button class="link" style="align-self:flex-start" data-act="pay-back">Back to clubs</button>
+      <div class="stack"><div class="clubhead">${clubAva(c.id, "lg")}<div class="grow"><span class="meta">Group of ${p.group.size}</span><h1>Join ${esc(c.name)} together</h1></div></div>
+        <p class="lead">Add your friends, pay once for everyone, then upload the screenshot. Your friends get an invite in the app to accept.</p></div>`
     : `<button class="link" style="align-self:flex-start" data-act="pay-back">Back to clubs</button>
       <div class="stack"><div class="clubhead">${clubAva(c.id, "lg")}<div class="grow"><span class="meta">Membership</span><h1>Join ${esc(c.name)}</h1></div></div>
         <p class="lead">Pay the membership fee in your banking app, then upload a screenshot. You become a member once the committee has checked it.</p></div>`;
@@ -1960,8 +2047,13 @@ function viewPay() {
   }
   return `${head}
     ${row && row.status === "rejected" && row.reject_reason ? `<div class="error">Last time: ${esc(row.reject_reason)}</div>` : ""}
-    <div class="bill"><span class="meta">${ev ? "Price" : "Membership fee"}</span><div class="amount">${money(ev ? ev.event_fee : c.fee)}</div><span class="meta">To ${esc(c.name)}</span></div>
+    <div class="bill"><span class="meta">${ev ? "Price" : p.group ? `Group of ${p.group.size} · ${eachPrice(p.group)} each` : "Membership fee"}</span><div class="amount">${money(ev ? ev.event_fee : p.group ? p.group.price : c.fee)}</div><span class="meta">To ${esc(c.name)}</span></div>
     <div class="paysteps">
+    ${p.group ? `<div class="paystep"><div class="card"><h3>Add your ${p.group.size - 1} friends</h3>
+      <p class="meta">Use the email each friend signs in to this app with, usually their student email.</p>
+      ${p.friends.map((v, k) => `<label>Friend ${k + 1}<input form="pay-form" name="friend${k}" data-friend="${k}" type="email" value="${esc(v)}" autocomplete="off" placeholder="e.g. abcd0001@student.monash.edu"></label>`).join("")}
+      <p class="note">Friends who haven't made an account yet will see the invite once they sign up with that email.</p>
+    </div></div>` : ""}
     <div class="paystep"><div class="card"><h3>Copy your reference</h3>
       ${p.ref ? `<div class="ref" id="pay-ref">${esc(p.ref)}</div>
           <p class="meta">Type this in the reference box of your transfer. The club uses it to find your payment in its bank account.</p>
@@ -1982,7 +2074,7 @@ function viewPay() {
     </div>` : ""}
     ${c.pay_note ? `<p class="note">${esc(c.pay_note)}</p>` : ""}
     </div></div>
-    <div class="paystep"><form data-form="pay" novalidate class="card"><h3>Upload your screenshot</h3>
+    <div class="paystep"><form data-form="pay" id="pay-form" novalidate class="card"><h3>Upload your screenshot</h3>
       <label>Payment screenshot <small>The page your bank shows after the transfer goes through.</small>
         <input type="file" id="pay-file" accept="image/*"></label>
       <div id="pay-preview" class="stack">${p.preview ? `<img class="shot" src="${p.preview}" alt="Your payment screenshot">` : ""}</div>
@@ -2021,7 +2113,9 @@ function viewClubPage() {
     <div class="stack" style="gap:6px"><span class="cat-label">${esc(c.category || "Club")}</span><h1>${esc(c.name)}</h1>
       ${c.description ? `<p class="lead">${esc(c.description)}</p>` : ""}</div>
     <div class="row">${b.buttons}${S.v6 && my(c.id) ? `<button class="btn quiet" data-act="pick-colour" data-club="${c.id}"><i class="sw-dot" style="background:${clubColour(c.id)}"></i>My colour</button>` : ""}${mine ? `<button class="btn ghost" data-act="manage" data-club="${c.id}" data-focus="club-page-edit">Edit page</button>` : ""}</div>
-    <p class="meta">${b.fee ? "Membership fee " + money(b.fee) : "Free to join"}</p>
+    <p class="meta">${b.fee ? "Membership fee " + money(b.fee) : "Free to join"}${bundleOf(c) && !my(c.id) ? ` · or ${money(bundleOf(c).price)} for a group of ${bundleOf(c).size} (${eachPrice(bundleOf(c))} each)` : ""}</p>
+    ${!my(c.id) && myInvite(c.id) ? inviteCard(myInvite(c.id)) : ""}
+    ${myGroupCard(c.id)}
     ${c.about ? `<section class="stack" aria-labelledby="h-about"><h2 id="h-about">About us</h2><div class="card"><p class="post-body">${esc(c.about)}</p></div></section>` : ""}
     <section class="stack" aria-labelledby="h-photos"><h2 id="h-photos">Photos${pics.length ? ` <span class="meta">${pics.length}</span>` : ""}</h2>${gallery}</section>`;
 }
@@ -2154,6 +2248,10 @@ function viewManage() {
         <div class="row between"><h3 class="grow">${full(r.students)}</h3><span class="price">${money(r.paid_amount || 0)}</span></div>
         <p class="meta">Student ID ${esc(r.students.student_id)} · sent ${when(r.submitted_at || r.joined_at)}</p>
         ${r.pay_ref ? `<p>Reference <strong style="font-family:ui-monospace,Menlo,Consolas,monospace">${esc(r.pay_ref)}</strong></p>` : ""}
+        ${(() => { const g = m.groups && m.groups.get(r.student_id); if (!g) return "";
+          return `<div class="groupbox"><b>Group of ${g.size} · paying for ${(g.join_group_invites || []).length} friends</b>
+            <ul class="glist">${(g.join_group_invites || []).map((i) => { const [t, cls] = GROUP_STATUS[i.status] || ["", ""]; return `<li><span class="grow">${esc(i.email)}</span><span class="chip ${cls}">${t}</span></li>`; }).join("")}</ul>
+            <p class="meta">When you approve, friends who accepted become members. Friends who accept later join straight away.</p></div>`; })()}
         <div class="row">
           <button class="btn quiet small" data-act="view-receipt" data-student="${esc(r.student_id)}">View screenshot</button>
           ${canEdit ? `<button class="btn small" data-act="approve" data-student="${esc(r.student_id)}">Approve</button>
@@ -2228,6 +2326,14 @@ function viewManage() {
       <form data-form="club-fee" novalidate class="card">
         <label>Fee in RM <small>What a student pays to join. Use 0 only if joining is free.</small>
           <input name="fee" id="fee-amount" type="number" min="0" step="0.01" inputmode="decimal" value="${fee}"></label>
+        ${S.vG ? `<fieldset class="groupset"><legend>Group price</legend>
+          <label class="check"><input type="checkbox" name="bundle_on" id="fee-bundle-on" ${club.bundle_size ? "checked" : ""}> Let students join together for a cheaper price</label>
+          <div class="two">
+            <label>Students per group<input name="bundle_size" id="fee-bundle-size" type="number" min="2" max="10" step="1" inputmode="numeric" value="${club.bundle_size || 4}"></label>
+            <label>Group price in RM<input name="bundle_price" id="fee-bundle-price" type="number" min="0" step="0.01" inputmode="decimal" value="${club.bundle_price != null ? Number(club.bundle_price) : ""}" placeholder="e.g. 18"></label>
+          </div>
+          <p class="meta">One student pays for the whole group and adds their friends. Each friend accepts in the app.</p>
+        </fieldset>` : ""}
         <label>Payment QR code <small>A screenshot of the club's DuitNow QR.</small>
           <input type="file" id="qr-file" accept="image/*"></label>
         <div id="qr-preview" class="stack">${qrShown ? `<img class="qr" src="${qrShown}" alt="The club's payment QR code">` : ""}</div>
@@ -2671,15 +2777,32 @@ function viewSheet() {
   if (!s) return "";
   const err = s.error ? `<div class="error" role="alert">${esc(s.error)}</div>` : "";
   let body = "", close = "Cancel";
-  if (s.type === "join") {
+  if (s.type === "join-how") {
+    const c = S.clubs.find((x) => x.id === s.clubId) || {}, b = bundleOf(c) || { size: 0, price: 0 };
+    const again = my(s.clubId) && my(s.clubId).status === "rejected";
+    body = `<h2>${again ? "Try again with" : "Join"} ${esc(c.name)}</h2>
+      <p class="lead">Joining with friends is cheaper.</p>
+      <button class="choice" data-act="pay-solo" data-club="${c.id}"><b>Just me</b><span class="price">${money(c.fee)}</span></button>
+      <button class="choice" data-act="pay-group" data-club="${c.id}"><b>Group of ${b.size}</b><span class="price">${money(b.price)}</span>
+        <small>${eachPrice(b)} each. You pay for everyone, then your ${b.size - 1} friends accept in the app.</small></button>`;
+  } else if (s.type === "swap") {
+    body = `<h2>Change a friend</h2>
+      <p class="lead">Swap <strong>${esc(s.email)}</strong> for someone else. They'll get the invite in the app.</p>
+      ${err}
+      <form data-form="swap-friend" novalidate class="stack">
+        <label>Friend's student email<input name="email" id="swap-email" type="email" required autocomplete="off" placeholder="e.g. abcd0001@student.monash.edu"></label>
+        <button class="btn wide">Send invite</button>
+      </form>`;
+  } else if (s.type === "join") {
     body = `<h2>Join ${esc(clubName(s.clubId))}?</h2>
       <p class="note">The club's committee will see your name, student ID, year, school, major, minor, email and phone number.</p>
       ${err}
       <button class="btn wide" data-act="join" data-club="${s.clubId}">Join club</button>`;
   } else if (s.type === "leave") {
     const st = (my(s.clubId) || {}).status;
+    const hasGroup = S.myGroups && S.myGroups.has(s.clubId);
     body = st === "pending" ? `<h2>Cancel your request to join ${esc(clubName(s.clubId))}?</h2>
-        <p class="lead">If you have already paid, ask the club's committee about a refund.</p>
+        <p class="lead">If you have already paid, ask the club's committee about a refund.${hasGroup ? " Your group is cancelled too, so your friends' invites disappear." : ""}</p>
         ${err}<button class="btn danger wide" data-act="leave" data-club="${s.clubId}">Cancel request</button>`
       : st === "rejected" ? `<h2>Remove ${esc(clubName(s.clubId))} from your clubs?</h2>
         <p class="lead">You can join again later.</p>
@@ -2910,9 +3033,15 @@ async function saveClubColour(colour) {
   if (error) { toast(friendly(error)); return; }
   await loadData(); render(); toast("Colour saved");
 }
-async function openPay(clubId, postId = null) {
+async function openPay(clubId, postId = null, group = false) {
   const c = S.clubs.find((x) => x.id === clubId);
   const pay = { clubId, postId, file: null, preview: "", error: "", qrUrl: "", qrFailed: false, ref: "", refLoading: true };
+  const b = group && !postId ? bundleOf(c) : null;
+  if (b) {
+    const old = (S.myGroups && S.myGroups.get(clubId) || {}).join_group_invites || [];
+    pay.group = b;
+    pay.friends = Array.from({ length: b.size - 1 }, (_, k) => (old[k] && old[k].status !== "declined" ? old[k].email : ""));
+  }
   S.pay = pay; S.sheet = null; S.tab = postId ? "home" : "clubs"; render(); window.scrollTo(0, 0);
   const show = () => { if (S.pay === pay) render(); };
   const getRef = (postId ? sb.rpc("event_payment_reference", { post: postId }) : sb.rpc("payment_reference", { club: clubId }))
@@ -3030,9 +3159,26 @@ const actions = {
   "ask-join": (d) => {
     const id = Number(d.club);
     const c = S.clubs.find((x) => x.id === id);
+    if (Number(c.fee) > 0 && bundleOf(c)) { S.sheet = { type: "join-how", clubId: id }; renderSheet(); return; }
     if (Number(c.fee) > 0) return openPay(id);          // clubs with a fee go to the payment page
     S.sheet = { type: "join", clubId: id }; renderSheet();
   },
+  "pay-solo": (d) => openPay(Number(d.club)),
+  "pay-group": (d) => openPay(Number(d.club), null, true),
+  "invite-yes": (d, btn) => busy(btn, async () => {
+    const { data, error } = await sb.rpc("respond_group_invite", { grp: Number(d.group), accept: true });
+    if (error) { toast(groupError(error)); await loadData(); render(); return; }
+    const inv = (S.invites || []).find((i) => i.group_id === Number(d.group)) || {};
+    await loadData(); render();
+    if (data === "joined") { S.sheet = { type: "done", img: "cheer", title: "Welcome to " + clubName(inv.club_id) + "!", text: "You're a member now. Their events and news will show up on your Home." }; renderSheet(); }
+    else toast("You're in the group. You'll join once the committee checks the payment.");
+  }),
+  "invite-no": (d, btn) => busy(btn, async () => {
+    const { error } = await sb.rpc("respond_group_invite", { grp: Number(d.group), accept: false });
+    if (error) { toast(groupError(error)); return; }
+    await loadData(); render(); toast("Declined. They can add someone else instead.");
+  }),
+  "ask-swap": (d) => { S.sheet = { type: "swap", group: Number(d.group), email: d.email }; renderSheet(); },
   "ask-leave": (d) => { S.sheet = { type: "leave", clubId: Number(d.club) }; renderSheet(); },
   "ask-delete-post": (d) => { S.sheet = { type: "delete-post", id: Number(d.id) }; renderSheet(); },
   "sheet-close": () => { S.sheet = null; renderSheet(); },
@@ -3397,6 +3543,23 @@ const forms = {
       S.pay = null; S.sheet = { type: "done", img: "success", title: "Payment sent!", text: "Your place is confirmed once the committee checks your payment." }; await loadData(); render(); window.scrollTo(0, 0);
       return;
     }
+    if (p.group) {                                      // paying for a group
+      const friends = p.friends.map((x) => String(x || "").trim().toLowerCase());
+      const own = String(S.profile.email || S.user.email || "").toLowerCase();
+      if (friends.some((x) => !x)) return fail(`Add all ${friends.length} friends' emails.`);
+      const bad = friends.find((x) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
+      if (bad) return fail(`“${bad}” isn't a valid email. Check it.`);
+      if (friends.includes(own)) return fail("Use your friends' emails, not your own.");
+      if (new Set(friends).size !== friends.length) return fail("Each friend's email can only be added once.");
+      const path = `${uid}/${clubId}-${Date.now()}.jpg`;
+      const up = await sb.storage.from("receipts").upload(path, p.file, { contentType: "image/jpeg" });
+      if (up.error) return fail(friendly(up.error));
+      const { error } = await sb.rpc("join_club_group", { club: clubId, receipt: path, friends });
+      if (error) { await loadData().catch(() => {}); return fail(groupError(error)); }
+      S.pay = null; S.sheet = { type: "done", img: "success", title: "Payment sent!", text: "Your friends will see an invite in the app. Once the committee checks your payment, everyone who has accepted becomes a member." };
+      await loadData(); render(); window.scrollTo(0, 0);
+      return;
+    }
     const path = `${uid}/${clubId}-${Date.now()}.jpg`;
     const up = await sb.storage.from("receipts").upload(path, p.file, { contentType: "image/jpeg" });
     if (up.error) return fail(friendly(up.error));
@@ -3407,6 +3570,13 @@ const forms = {
     const { error } = await sb.from("memberships").insert({ student_id: uid, club_id: clubId, receipt_path: path });
     if (error) { await loadData().catch(() => {}); return fail(friendly(error)); }
     S.pay = null; S.sheet = { type: "done", img: "success", title: "Payment sent!", text: "The committee will check it soon. You become a member once they approve it." }; await loadData(); render(); window.scrollTo(0, 0);
+  },
+  "swap-friend": async (f) => {
+    const s = S.sheet, email = String(f.email || "").trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { s.error = "Enter your friend's email."; renderSheet(); return; }
+    const { error } = await sb.rpc("replace_group_invite", { grp: s.group, old_email: s.email, new_email: email });
+    if (error) { s.error = groupError(error); renderSheet(); return; }
+    S.sheet = null; await loadData(); render(); toast("Invite sent to " + email);
   },
   "reject": async (f, form) => {
     const clubId = S.manage.clubId;
@@ -3461,6 +3631,17 @@ const forms = {
     if (fee < 0 || fee > 9999) return fail("Enter a fee between 0 and 9999.");
     if (number && (!bank || !holder)) return fail("Add the bank and the account name as well.");
     if (fee > 0 && !number && !S.manage.qrFile && !club.pay_qr_path) return fail("Add a QR code or a bank account so students can pay.");
+    const bundle = {};
+    if (S.vG) {
+      if (f.bundle_on) {
+        const size = Number(f.bundle_size), price = Math.round((Number(f.bundle_price) || 0) * 100) / 100;
+        if (!(fee > 0)) return fail("A group price needs a membership fee above 0.");
+        if (!Number.isInteger(size) || size < 2 || size > 10) return fail("Students per group must be a whole number from 2 to 10.");
+        if (!(price > 0)) return fail("Enter the group price.");
+        if (price >= fee * size) return fail(`The group price should be cheaper than ${size} single fees (${money(fee * size)}).`);
+        Object.assign(bundle, { bundle_size: size, bundle_price: price });
+      } else Object.assign(bundle, { bundle_size: null, bundle_price: null });
+    }
     let qrPath = club.pay_qr_path || null;
     if (S.manage.qrFile) {
       const path = `${clubId}/qr-${Date.now()}.jpg`;
@@ -3470,7 +3651,7 @@ const forms = {
     }
     const { error } = await sb.from("clubs").update({
       fee, pay_bank: bank || null, pay_account_name: holder || null, pay_account_number: number || null,
-      pay_qr_path: qrPath, pay_note: f.pay_note.trim() || null
+      pay_qr_path: qrPath, pay_note: f.pay_note.trim() || null, ...bundle
     }).eq("id", clubId);
     if (error) return fail(friendly(error));
     await loadData(); await loadManage(clubId); toast("Fee details saved");
@@ -3516,6 +3697,10 @@ document.addEventListener("submit", (e) => {
   const values = Object.fromEntries(new FormData(form).entries());
   const btn = form.querySelector("button:not([type=button])");
   busy(btn, () => fn(values, form)).catch((err) => toast(friendly(err)));
+});
+document.addEventListener("input", (e) => {
+  const k = e.target.dataset && e.target.dataset.friend;
+  if (k != null && S.pay && S.pay.friends) S.pay.friends[Number(k)] = e.target.value;
 });
 document.addEventListener("change", async (e) => {
   const el = e.target;
