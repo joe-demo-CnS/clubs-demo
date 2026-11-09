@@ -1966,14 +1966,16 @@ function viewHome() {
         <section class="stack"><div class="sec-head"><h2 id="h-posts">What's happening</h2>${S.feed.length ? `<button class="see" data-act="open-notes">See all</button>` : ""}</div>${happening}</section>
       </div>
       <div>
-        <section class="stack"><div class="sec-head"><h2>For ${esc(th.label || "you")}${th.label ? " Students" : ""}</h2><button class="see" data-act="see-clubs" data-filter="all">See all</button></div>
-          ${recs.length ? `<div class="stack tight">${recs.slice(0, 3).map(({ c, why }) => clubRow(c, why)).join("")}</div>`
-            : `<p class="meta">${p.major || p.minor ? "No clubs match your studies yet. Here are some popular ones." : "Add your major or minor in Profile to get club suggestions."}</p>`}</section>
-        ${(() => { const more = moreSuggestions(recs.slice(0, 3));
-          const block = (title, list, filter) => list.length ? `<section class="stack"><div class="sec-head"><h2>${title}</h2>
-              <button class="see" data-act="see-clubs" data-filter="${filter}">See all</button></div>
-              <div class="stack tight">${list.map(({ c, why }) => clubRow(c, why)).join("")}</div></section>` : "";
-          return block("Popular clubs", more.popular, "all") + block("Sports", more.sports, "Sports"); })()}
+        ${(() => {                                         // 3 suggestions in total: study matches first, then popular clubs and a sport
+          const study = recs.slice(0, 3), more = moreSuggestions(study);
+          const extra = [], pop = [...more.popular], spo = [...more.sports];
+          while (study.length + extra.length < 3 && (pop.length || spo.length)) {
+            const next = (extra.length % 2 === 0 ? pop.shift() || spo.shift() : spo.shift() || pop.shift());
+            if (next) extra.push(next);
+          }
+          const list = [...study, ...extra];
+          return `<section class="stack"><div class="sec-head"><h2>For ${esc(th.label || "you")}${th.label ? " Students" : ""}</h2><button class="see" data-act="see-clubs" data-filter="all">See all</button></div>
+            ${list.length ? `<div class="stack tight">${list.map(({ c, why }) => clubRow(c, why)).join("")}</div>` : `<p class="meta">You've joined every club that's open. Nice!</p>`}</section>`; })()}
         ${S.v3 ? `<section class="stack" aria-labelledby="h-cal">${calendarHtml()}</section>` : ""}
       </div>
     </div>`;
