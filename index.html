@@ -1976,16 +1976,20 @@ function viewHome() {
 function recommendedClubs() {
   const p = S.profile || {};
   const studies = [p.major, p.major2, p.minor, p.minor2].filter(Boolean);
-  const skip = new Set(["school", "and", "the", "for", "studies", "with", "jeffrey", "cheah"]);
-  const words = [...studies, p.school || ""].join(" ").toLowerCase().split(/[^a-z]+/).filter((w) => w.length >= 4 && !skip.has(w));
+  // Only the student's majors and minors are matched by word, and only against the club's name, so a word in a
+  // description (e.g. "technique" vs "Technology") can't cause a match. School matches come from the club's own picks.
+  const skip = new Set(["school", "and", "the", "for", "studies", "with", "jeffrey", "cheah", "science", "sciences", "applied",
+    "advanced", "general", "information", "management", "systems", "health", "social", "international"]);
+  const words = studies.join(" ").toLowerCase().split(/[^a-z]+/).filter((w) => w.length >= 5 && !skip.has(w));
   return S.clubs.filter((c) => c.is_active && !isOfficial(c) && !S.mine.has(c.id) && !isCommittee(c.id)).map((c) => {
     const fm = c.fit_majors || [], fs = c.fit_schools || [];
     const hit = studies.find((s) => fm.includes(s));
     if (hit) return { c, score: 10, why: `Picked by the club for ${hit} students` };
     if (p.school && fs.includes(p.school)) return { c, score: 6, why: `Picked by the club for ${p.school} students` };
-    const text = (c.name + " " + (c.description || "") + " " + (c.category || "")).toLowerCase().split(/[^a-z]+/);
-    const w = words.find((x) => text.some((y) => y.length >= 4 && y.startsWith(x.slice(0, 5))));
-    if (w) { const src = [...studies, p.school || ""].find((s) => s.toLowerCase().includes(w)) || w; return { c, score: 3, why: `Matches your ${studies.includes(src) ? "study of " + src : src}` }; }
+    const text = c.name.toLowerCase().split(/[^a-z]+/).filter((y) => y.length >= 5);
+    const same = (x, y) => x === y || (Math.min(x.length, y.length) >= 6 && (x.startsWith(y) || y.startsWith(x)));
+    const w = words.find((x) => text.some((y) => same(x, y)));
+    if (w) { const src = studies.find((s) => s.toLowerCase().includes(w)) || w; return { c, score: 3, why: `Matches your study of ${src}` }; }
     return null;
   }).filter(Boolean).sort((a, b) => b.score - a.score || a.c.name.localeCompare(b.c.name)).slice(0, 5);
 }
