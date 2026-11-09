@@ -846,6 +846,9 @@ form.aform input:not([type=checkbox]):not([type=radio]), form.aform select { bac
 .cthumb b { font: 800 1.15rem/1 var(--display); letter-spacing: .02em; text-shadow: 0 1px 2px rgba(0,0,0,.2); }
 .cthumb .clogo { width: 44%; aspect-ratio: 1; max-width: 46px; border-radius: 10px; overflow: hidden; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.18); }
 .cthumb .clogo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* A club with a logo: the logo fills the whole tile, no colour behind it */
+.cthumb.full { background: #fff; }
+.cthumb.full .clogo { width: 100%; max-width: none; height: 100%; border-radius: 0; box-shadow: none; }
 
 /* ===== Colourful page headers with a mascot crew ===== */
 .phead { --p1: #E3EEFF; --p2: #D7E4FF; --p3: var(--accent);
@@ -1541,7 +1544,7 @@ const dayMon = (x) => x.toLocaleDateString("en-MY", { day: "numeric", month: "sh
 // Events and posts without their own photo get a block in the club's colour, with its logo or initials.
 function colourThumb(id) {
   const c = S.clubs.find((x) => x.id === id) || {};
-  return `<span class="cthumb" style="--c:${clubColour(id)}">${c.logo_path
+  return `<span class="cthumb${c.logo_path ? " full" : ""}" style="--c:${clubColour(id)}">${c.logo_path
     ? `<span class="clogo"><img data-bucket="club-media" data-path="${esc(c.logo_path)}" alt=""></span>`
     : `<b>${esc(initials(clubName(id)))}</b>`}</span>`;
 }
