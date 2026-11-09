@@ -1310,6 +1310,8 @@ async function loadData() {
   }
   S.mine = new Map(m.data.map((r) => [r.club_id, r]));
   S.committee = k.data;
+  const mc = await sb.rpc("club_member_counts");               // numbers only, for "Popular clubs"
+  S.memberCounts = new Map(((mc && mc.data) || []).map((r) => [r.club_id, Number(r.members)]));
   S.vG = S.clubs.length > 0 && "bundle_size" in S.clubs[0];          // group join (database update 11)
   S.invites = []; S.myGroups = new Map();
   if (S.vG) {
@@ -1964,9 +1966,14 @@ function viewHome() {
         <section class="stack"><div class="sec-head"><h2 id="h-posts">What's happening</h2>${S.feed.length ? `<button class="see" data-act="open-notes">See all</button>` : ""}</div>${happening}</section>
       </div>
       <div>
-        <section class="stack"><div class="sec-head"><h2>For ${esc(th.label || "you")}${th.label ? " Students" : ""}</h2><button class="see" data-act="tab" data-tab="clubs">See all</button></div>
-          ${recs.length ? `<div class="stack tight">${recs.map(({ c, why }) => clubRow(c, why)).join("")}</div>`
-            : `<p class="meta">${p.major || p.minor ? "No new clubs match your studies right now." : "Add your major or minor in Profile to get club suggestions."}</p>`}</section>
+        <section class="stack"><div class="sec-head"><h2>For ${esc(th.label || "you")}${th.label ? " Students" : ""}</h2><button class="see" data-act="see-clubs" data-filter="all">See all</button></div>
+          ${recs.length ? `<div class="stack tight">${recs.slice(0, 3).map(({ c, why }) => clubRow(c, why)).join("")}</div>`
+            : `<p class="meta">${p.major || p.minor ? "No clubs match your studies yet. Here are some popular ones." : "Add your major or minor in Profile to get club suggestions."}</p>`}</section>
+        ${(() => { const more = moreSuggestions(recs.slice(0, 3));
+          const block = (title, list, filter) => list.length ? `<section class="stack"><div class="sec-head"><h2>${title}</h2>
+              <button class="see" data-act="see-clubs" data-filter="${filter}">See all</button></div>
+              <div class="stack tight">${list.map(({ c, why }) => clubRow(c, why)).join("")}</div></section>` : "";
+          return block("Popular clubs", more.popular, "all") + block("Sports", more.sports, "Sports"); })()}
         ${S.v3 ? `<section class="stack" aria-labelledby="h-cal">${calendarHtml()}</section>` : ""}
       </div>
     </div>`;
@@ -1992,6 +1999,22 @@ function recommendedClubs() {
     if (w) { const src = studies.find((s) => s.toLowerCase().includes(w)) || w; return { c, score: 3, why: `Matches your study of ${src}` }; }
     return null;
   }).filter(Boolean).sort((a, b) => b.score - a.score || a.c.name.localeCompare(b.c.name)).slice(0, 5);
+}
+// Extra suggestions on Home: the biggest clubs, and sports. Skips clubs already shown or joined.
+function moreSuggestions(shown) {
+  const seen = new Set(shown.map((r) => r.c.id));
+  const open = S.clubs.filter((c) => c.is_active && !isOfficial(c) && !S.mine.has(c.id) && !isCommittee(c.id) && canTakePayment(c));
+  const count = (c) => (S.memberCounts && S.memberCounts.get(c.id)) || 0;
+  const daySeed = Math.floor(Date.now() / 864e5);                 // ties change daily so the same clubs aren't always shown
+  const mix = (c) => ((c.id * 2654435761 + daySeed * 97) >>> 0) % 1000;
+  const byPopular = (a, b) => count(b) - count(a) || mix(a) - mix(b);
+  const popular = open.filter((c) => !seen.has(c.id)).sort(byPopular).slice(0, 3);
+  popular.forEach((c) => seen.add(c.id));
+  const sports = open.filter((c) => c.category === "Sports" && !seen.has(c.id)).sort(byPopular).slice(0, 3);
+  return {
+    popular: popular.map((c) => ({ c, why: "Popular with Monash students" })),
+    sports: sports.map((c) => ({ c, why: "Stay active this semester" }))
+  };
 }
 function recommendationsHtml() {
   const list = recommendedClubs();
@@ -3128,6 +3151,7 @@ const actions = {
   }),
   "logout": async (d, btn) => busy(btn, async () => { await sb.auth.signOut(); }),
   "club-filter": (d) => { S.clubFilter = d.filter; render(); },
+  "see-clubs": (d) => { goTab("clubs"); S.clubPage = null; S.clubFilter = d.filter || "all"; render(); window.scrollTo(0, 0); },
   "perk-group": (d) => { S.perkGroup = d.group; S.perkSearch = ""; render(); },
   "cert-view": (d) => { S.tab = "certs"; S.certView = d.view; render(); window.scrollTo(0, 0); },
   "add-cert": (d) => { S.sheet = { type: "add-cert", key: d.key || "", file: null }; renderSheet(); },
